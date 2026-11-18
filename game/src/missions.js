@@ -1,4 +1,4 @@
-// Solstice City — the story: four missions for Rico Marín, from Vera Solano,
+// Solstice City — the story: five missions for Rico Marín, from Vera Solano,
 // the fixer who owns his debt. Each mission is a small state machine with a
 // marker on the map, an objective line, and a cash reward.
 
@@ -30,6 +30,13 @@ export const MISSIONS = [
     giver: 'Vera Solano',
     brief: 'The bank courier van runs the same loop every morning, fat with cash. Stop it — ram it, shoot it, I don\u2019t care — grab the money and lose the heat at the safehouse. Do this and your debt is gone.',
     reward: 3000,
+  },
+  {
+    id: 'airport-run',
+    name: 'Mission 5 — Airport Run',
+    giver: 'Vera Solano',
+    brief: 'Debt\u2019s gone, Rico — but the heat isn\u2019t. I need out of Solstice tonight. Pick me up at the garage and get me to the airstrip in two minutes. The cops know my face, so expect company.',
+    reward: 2000,
   },
 ];
 
@@ -97,6 +104,12 @@ export class MissionManager {
         const p = g.randomRoadPointFar(g.player.x, g.player.y, 600);
         this.van = g.spawnMissionVan(p.x, p.y);
       }
+    } else if (this.index === 4) {
+      if (this.step === 0) {
+        this.timer = 0;
+      } else {
+        this.timer = 120;
+      }
     }
   }
 
@@ -105,10 +118,10 @@ export class MissionManager {
     const lm = g.city.landmarks;
     if (!this.active || this.done) return null;
     if (this.index === 0) {
-      return this.step === 0 ? null : { x: lm.garage.x, y: lm.garage.y, label: 'Vera\u2019s Garage' };
+      return this.step === 0 ? null : { x: lm.garage.arrival.x, y: lm.garage.arrival.y, label: 'Vera\u2019s Garage' };
     }
     if (this.index === 1) {
-      if (this.step === 0) return { x: lm.garage.x, y: lm.garage.y, label: 'Pick up the package' };
+      if (this.step === 0) return { x: lm.garage.arrival.x, y: lm.garage.arrival.y, label: 'Pick up the package' };
       return { x: lm.parkC.x, y: lm.parkC.y, label: 'Deliver to the Marina' };
     }
     if (this.index === 2) {
@@ -118,7 +131,11 @@ export class MissionManager {
     if (this.index === 3) {
       if (this.step === 0) return this.van ? { x: this.van.x, y: this.van.y, label: 'Stop the courier van' } : null;
       if (this.step === 1) return this.van ? { x: this.van.x, y: this.van.y, label: 'Grab the cash' } : null;
-      return { x: lm.garage.x, y: lm.garage.y, label: 'Lose the heat — safehouse' };
+      return { x: lm.garage.arrival.x, y: lm.garage.arrival.y, label: 'Lose the heat — safehouse' };
+    }
+    if (this.index === 4) {
+      if (this.step === 0) return { x: lm.garage.arrival.x, y: lm.garage.arrival.y, label: 'Pick up Vera' };
+      return { x: lm.airstrip.arrival.x, y: lm.airstrip.arrival.y, label: 'Solstice Airstrip' };
     }
     return null;
   }
@@ -143,6 +160,10 @@ export class MissionManager {
       if (this.step === 1) return 'Grab the cash from the van';
       return 'Lose the heat — reach the safehouse';
     }
+    if (this.index === 4) {
+      if (this.step === 0) return 'Pick up Vera at the garage';
+      return `Get Vera to the airstrip — ${Math.max(0, Math.ceil(this.timer))}s left`;
+    }
     return '';
   }
 
@@ -164,6 +185,7 @@ export class MissionManager {
     // A whole mission is done: pay out and move on.
     const reward = m ? m.reward : 0;
     g.player.cash += reward;
+    g.totalEarned = (g.totalEarned || 0) + reward;
     g.audio.missionComplete();
     g.toast(`${m.name} complete! +$${reward}`);
     g.saveGame();
@@ -207,9 +229,9 @@ export class MissionManager {
 
     if (this.index === 0) {
       if (this.step === 0 && p.driving) this.completeStep();
-      else if (this.step === 1 && p.driving && near(lm.garage.x, lm.garage.y, 95)) this.completeStep();
+      else if (this.step === 1 && p.driving && near(lm.garage.arrival.x, lm.garage.arrival.y, 95)) this.completeStep();
     } else if (this.index === 1) {
-      if (this.step === 0 && near(lm.garage.x, lm.garage.y, 75)) {
+      if (this.step === 0 && near(lm.garage.arrival.x, lm.garage.arrival.y, 75)) {
         this.completeStep();
       } else if (this.step === 1) {
         this.timer -= dt;
@@ -246,7 +268,24 @@ export class MissionManager {
           g.toast('Cash grabbed! 3 stars — lose the heat at the safehouse!');
         }
       } else if (this.step === 2) {
-        if (near(lm.garage.x, lm.garage.y, 95)) this.completeStep();
+        if (near(lm.garage.arrival.x, lm.garage.arrival.y, 95)) this.completeStep();
+      }
+    } else if (this.index === 4) {
+      if (this.step === 0) {
+        if (p.driving && near(lm.garage.arrival.x, lm.garage.arrival.y, 75)) {
+          this.step = 1;
+          this.timer = 120;
+          p.addWanted(2);
+          g.toast('Vera is in! 120 seconds to the airstrip — and the cops know her face!');
+          g.audio.pickup();
+        }
+      } else {
+        this.timer -= dt;
+        if (this.timer <= 0) {
+          this.fail('Vera missed her flight');
+        } else if (near(lm.airstrip.arrival.x, lm.airstrip.arrival.y, 90)) {
+          this.completeStep();
+        }
       }
     }
   }

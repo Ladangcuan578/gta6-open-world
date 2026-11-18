@@ -24,7 +24,10 @@ export function makeCar(x, y, angle, type, color, opts = {}) {
     smoke: 0,
     wreck: false,
     wreckTimer: 0,
-    sirenPhase: Math.random() * Math.PI * 2,
+    // Deterministic from the car id (golden-angle spread), so the police
+    // light bars flash the same way on every run — the screenshots must be
+    // byte-identical when re-shot.
+    sirenPhase: ((carId * 2.39996) % (Math.PI * 2)),
   };
 }
 
@@ -41,14 +44,74 @@ function nextWaypoint(car, rng) {
   return options[Math.floor(rng.next() * options.length)];
 }
 
+// A traffic car drives on the roads and only changes direction at
+// intersections, so it stays on its lane and never clips a building corner.
+// State: axis ('x' or 'y'), dir (+1 / -1), and the lane offset for right-hand
+// traffic. The angle always matches the axis and direction.
+function initAxis(car, rng) {
+  const vertical = rng.chance(0.5);
+  const line = rng.int(0, CFG.GRID) * CFG.PITCH;
+  const along = rng.range(0, WORLD_W);
+  const dir = rng.chance(0.5) ? 1 : -1;
+  if (vertical) {
+    car.axis = 'y';
+    car.dir = dir;
+    car.x = line + (dir > 0 ? -16 : 16);
+    car.y = along;
+  } else {
+    car.axis = 'x';
+    car.dir = dir;
+    car.y = line + (dir > 0 ? 16 : -16);
+    car.x = along;
+  }
+}
+
+function laneOffset(car) {
+  if (car.axis === 'x') return car.dir > 0 ? 16 : -16;
+  return car.dir > 0 ? -16 : 16;
+}
+
+// At an intersection: straight, left or right — never a U-turn, and never
+// off the edge of the city.
+function pickTurn(car, rng) {
+  const gx = Math.round(car.x / CFG.PITCH);
+  const gy = Math.round(car.y / CFG.PITCH);
+  const options = [];
+  if (car.axis === 'x') {
+    options.push({ axis: 'x', dir: car.dir });
+    options.push({ axis: 'y', dir: 1 });
+    options.push({ axis: 'y', dir: -1 });
+  } else {
+    options.push({ axis: 'y', dir: car.dir });
+    options.push({ axis: 'x', dir: 1 });
+    options.push({ axis: 'x', dir: -1 });
+  }
+  const valid = options.filter((o) => {
+    if (o.axis === 'x') {
+      const nx = gx + o.dir;
+      return nx >= 0 && nx <= CFG.GRID;
+    }
+    const ny = gy + o.dir;
+    return ny >= 0 && ny <= CFG.GRID;
+  });
+  const choice = valid.length > 0 ? valid[Math.floor(rng.next() * valid.length)] : options[0];
+  car.axis = choice.axis;
+  car.dir = choice.dir;
+}
+
 export function spawnTraffic(city, rng, count, avoidX, avoidY, avoidR) {
   const cars = [];
   for (let i = 0; i < count; i += 1) {
-    const p = randomRoadPoint(rng, avoidX, avoidY, avoidR);
     const type = rng.pick(['sedan', 'sedan', 'sedan', 'sport', 'truck', 'van']);
-    const car = makeCar(p.x, p.y, rng.next() * Math.PI * 2, type, rng.pick(PAL.carColors));
+    const car = makeCar(0, 0, 0, type, rng.pick(PAL.carColors));
+    // Start on a random road, already on the correct lane for its direction.
+    // Retry a few times so the car does not spawn on top of the player.
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      initAxis(car, rng);
+      if (avoidX === undefined || Math.hypot(car.x - avoidX, car.y - avoidY) >= avoidR) break;
+    }
     car.targetSpeed = rng.range(CFG.TRAFFIC_SPEED[0], CFG.TRAFFIC_SPEED[1]);
-    car.waypoint = nextWaypoint(car, rng);
+    car.speed = car.targetSpeed * rng.range(0.7, 1);
     cars.push(car);
   }
   return cars;
@@ -109,34 +172,45 @@ function carAhead(cars, car, dist) {
   return best;
 }
 
+// Traffic cars follow the road grid: they drive along their lane and only
+// turn at intersections, so they never cut a corner through a building.
 export function updateTraffic(cars, dt, city, rng, playerCar) {
   for (const car of cars) {
     if (car.driver !== 'traffic' || car.wreck) continue;
-    if (!car.waypoint) car.waypoint = nextWaypoint(car, rng);
-    const dx = car.waypoint.x - car.x;
-    const dy = car.waypoint.y - car.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 14) {
-      car.waypoint = nextWaypoint(car, rng);
-      continue;
-    }
-    const wantAngle = Math.atan2(dy, dx);
-    const diff = angleDiff(car.angle, wantAngle);
+    if (!car.axis) initAxis(car, rng);
+    car.angle = car.axis === 'x' ? (car.dir > 0 ? 0 : Math.PI) : (car.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+
+    // Slow down if a car is right ahead on the same road.
     const ahead = carAhead(cars, car, 70);
-    const target = ahead ? Math.max(0, ahead.speed * 0.7) : car.targetSpeed;
-    const drive = {
-      throttle: target > car.speed ? 1 : 0,
-      brake: target < car.speed - 20,
-      steer: clamp(diff * 2.2, -1, 1),
-    };
-    // Ease into the turn: slow down for sharp corners.
-    if (Math.abs(diff) > 0.9 && car.speed > 90) drive.throttle = 0;
-    stepCar(car, dt, drive, city);
-    // Keep traffic on the roads: if it drifted off (pushed by a crash), steer
-    // back toward the nearest road point.
-    if (!isRoad(car.x, car.y)) {
-      const p = { x: Math.round(car.x / CFG.PITCH) * CFG.PITCH, y: Math.round(car.y / CFG.PITCH) * CFG.PITCH };
-      car.waypoint = p;
+    let target = car.targetSpeed;
+    if (ahead) target = Math.min(target, ahead.speed * 0.7);
+    if (playerCar && playerCar !== car) {
+      const d = Math.hypot(playerCar.x - car.x, playerCar.y - car.y);
+      if (d < 70) target = Math.min(target, 0);
+    }
+    car.speed += (target - car.speed) * Math.min(1, dt * 1.5);
+
+    // Move along the current axis, glued to the lane.
+    const step = car.speed * dt;
+    if (car.axis === 'x') {
+      car.x += car.dir * step;
+      const lineY = Math.round(car.y / CFG.PITCH) * CFG.PITCH;
+      car.y = lineY + laneOffset(car);
+    } else {
+      car.y += car.dir * step;
+      const lineX = Math.round(car.x / CFG.PITCH) * CFG.PITCH;
+      car.x = lineX + laneOffset(car);
+    }
+
+    // Next intersection along this axis: snap to it and pick a turn.
+    const pos = car.axis === 'x' ? car.x : car.y;
+    const nextLine = car.dir > 0
+      ? (Math.floor(pos / CFG.PITCH) + 1) * CFG.PITCH
+      : (Math.ceil(pos / CFG.PITCH) - 1) * CFG.PITCH;
+    if (Math.abs(nextLine - pos) < step + 4) {
+      if (car.axis === 'x') car.x = nextLine;
+      else car.y = nextLine;
+      pickTurn(car, rng);
     }
   }
   // Gentle separation so traffic does not stack up at intersections.
@@ -163,7 +237,7 @@ export function updateTraffic(cars, dt, city, rng, playerCar) {
 export function spawnPolice(city, rng, count, px, py) {
   const cars = [];
   for (let i = 0; i < count; i += 1) {
-    const p = randomRoadPoint(rng, px, py, 520);
+    const p = randomRoadPoint(rng, px, py, 450);
     const car = makeCar(p.x, p.y, 0, 'police', '#eef1f4', { driver: 'police' });
     cars.push(car);
   }
@@ -174,6 +248,14 @@ export function spawnPolice(city, rng, count, px, py) {
 export function updatePolice(cars, dt, city, player, onRam) {
   for (const car of cars) {
     if (car.driver !== 'police' || car.wreck) continue;
+    // Roadblock cars sit across the road and do not chase; they still ram
+    // the player on contact.
+    if (car.roadblock) {
+      const pr = player.inCar ? 34 : 26;
+      car.ramming = Math.hypot(car.x - player.x, car.y - player.y) < pr + 18;
+      if (car.ramming && onRam) onRam(car, dt);
+      continue;
+    }
     const tx = player.x;
     const ty = player.y;
     const dx = tx - car.x;

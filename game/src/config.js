@@ -47,7 +47,12 @@ export const CFG = {
   FIRE_COOLDOWN: 0.16,
 
   // Missions.
-  MISSION_REWARDS: [500, 800, 1200, 3000],
+  MISSION_REWARDS: [500, 800, 1200, 3000, 2000],
+
+  // Side activities.
+  FARE_REWARD: [150, 300],
+  STASH_REWARD: 100,
+  STASH_COUNT: 8,
 
   // Save.
   SAVE_KEY: 'solstice-city-save-v1',

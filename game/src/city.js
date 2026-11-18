@@ -10,7 +10,7 @@ export const WORLD_H = CFG.GRID * CFG.PITCH + CFG.BEACH + CFG.BAY;
 const ROAD_HALF = CFG.ROAD / 2;
 
 // Fixed landmarks, by block coordinates (bx, by): garage (safehouse) north-west,
-// bank east, hospital south-west, plaza centre, parks scattered.
+// bank east, hospital south-west, plaza centre, parks scattered, airstrip north-east.
 const LANDMARKS = {
   garage: { bx: 1, by: 1, label: 'Vera\u2019s Garage' },
   bank: { bx: 9, by: 3, label: 'Solstice Bank' },
@@ -19,6 +19,7 @@ const LANDMARKS = {
   parkA: { bx: 8, by: 8, label: 'Palm Park' },
   parkB: { bx: 3, by: 6, label: 'Jacaranda Park' },
   parkC: { bx: 9, by: 10, label: 'Marina Park' },
+  airstrip: { bx: 10, by: 1, label: 'Solstice Airstrip' },
 };
 
 export function blockRect(bx, by) {
@@ -39,11 +40,19 @@ export function buildCity(seed) {
   const rng = makeRng(seed);
   const buildings = [];
   const parks = [];
+  const runways = [];
   const trees = [];
   const landmarks = {};
   for (const [key, lm] of Object.entries(LANDMARKS)) {
     const c = blockCenter(lm.bx, lm.by);
-    landmarks[key] = { ...lm, x: c.x, y: c.y };
+    // The arrival point is where a car can actually stop: the road just south
+    // of the block (the runway itself for the airstrip). Mission markers and
+    // completion checks use this, never the block centre, which sits inside
+    // a building for most landmarks.
+    const arrival = key === 'airstrip'
+      ? { x: c.x, y: c.y }
+      : nearestRoadPoint(c.x, c.y + CFG.BLOCK / 2 + CFG.ROAD);
+    landmarks[key] = { ...lm, x: c.x, y: c.y, arrival };
   }
   const parkKeys = new Set(['plaza', 'parkA', 'parkB', 'parkC']);
   for (let by = 0; by < CFG.GRID; by += 1) {
@@ -52,6 +61,16 @@ export function buildCity(seed) {
         (k) => LANDMARKS[k].bx === bx && LANDMARKS[k].by === by,
       );
       const r = blockRect(bx, by);
+      if (key === 'airstrip') {
+        // A runway strip across the block, with a hangar at its north edge.
+        // The strip itself is drivable ground, not a building.
+        runways.push({ x: r.x, y: r.y + r.h / 2 - 22, w: r.w, h: 44 });
+        buildings.push({
+          x: r.x + 14, y: r.y + 10, w: 70, h: 44,
+          roof: '#8a9ab0', wall: '#dccbb2', kind: 'hangar', label: 'Hangar',
+        });
+        continue;
+      }
       if (key && parkKeys.has(key)) {
         parks.push({ ...r, kind: key === 'plaza' ? 'plaza' : 'park', label: LANDMARKS[key].label });
         const treeCount = key === 'plaza' ? 8 : 14;
@@ -96,7 +115,7 @@ export function buildCity(seed) {
       }
     }
   }
-  return { buildings, parks, trees, landmarks, rng };
+  return { buildings, parks, runways, trees, landmarks, rng };
 }
 
 // Is the point on a road (within a road's half width of a grid line)?
@@ -247,6 +266,18 @@ export function prerenderCity(city) {
     c.beginPath();
     c.arc(t.x - 2, t.y - 2, t.r * 0.6, 0, Math.PI * 2);
     c.fill();
+  }
+  // Runways: dark asphalt strips with white dashes.
+  for (const rw of city.runways) {
+    c.fillStyle = '#33363e';
+    c.fillRect(rw.x, rw.y, rw.w, rw.h);
+    c.fillStyle = '#eef1f4';
+    for (let x = rw.x + 10; x < rw.x + rw.w - 10; x += 36) {
+      c.fillRect(x, rw.y + rw.h / 2 - 2, 20, 4);
+    }
+    c.fillStyle = '#e8c85a';
+    c.fillRect(rw.x, rw.y, rw.w, 3);
+    c.fillRect(rw.x, rw.y + rw.h - 3, rw.w, 3);
   }
   // Buildings: shadow, walls, roof, roof details.
   for (const b of city.buildings) {

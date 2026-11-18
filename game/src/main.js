@@ -17,13 +17,13 @@ import {
 import { spawnPeds, updatePeds, scarePeds, makePed } from './pedestrians.js';
 import { Player } from './player.js';
 import { MissionManager } from './missions.js';
-import { Camera, renderWorld } from './render.js';
+import { Camera, Renderer3D } from './render.js';
 import { Hud } from './hud.js';
 import { saveGame, loadSave, clearSave } from './save.js';
 import { stageShot } from './shots.js';
 
 const STEP = 1 / 60;
-const MAX_FRAME = 0.25;
+const MAX_FRAME = 0.34; // cap one frame's catch-up so a slow frame cannot spiral
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
@@ -59,11 +59,18 @@ function createGame(seedValue) {
     skids: [],
     cars: [],
     peds: [],
+    totalEarned: 0,
+    fare: null,
+    fareTimer: 0,
+    stashes: [],
+    roadblock: false,
   };
-  game.player = new Player(city.landmarks.garage.x, city.landmarks.garage.y + 60);
+  // Rico starts on the road outside Vera's garage, not inside the building.
+  game.player = new Player(city.landmarks.garage.arrival.x, city.landmarks.garage.arrival.y);
   game.missions = new MissionManager(game);
   game.hud = new Hud(game);
   game.hud.buildMinimapBase(cityCanvas);
+  game.renderer = new Renderer3D(canvas, game);
 
   game.toast = (msg) => game.hud.toast(msg);
   game.showBrief = (title, text, giver) => game.hud.showBrief(title, text, giver);
@@ -110,13 +117,22 @@ function createGame(seedValue) {
     game.events = { busted: false, wasted: false };
     game.clock = 0;
     game.saveTimer = 0;
-    game.player = new Player(city.landmarks.garage.x, city.landmarks.garage.y + 60);
+    game.fare = null;
+    game.fareTimer = 25;
+    game.stashes = [];
+    game.roadblock = false;
+    game.player = new Player(city.landmarks.garage.arrival.x, city.landmarks.garage.arrival.y);
     game.missions = new MissionManager(game);
     const gx = city.landmarks.garage.x;
     const gy = city.landmarks.garage.y;
     game.cars.push(...spawnTraffic(city, game.rng, CFG.TRAFFIC_COUNT, gx, gy, 260));
     game.cars.push(...spawnParked(city, game.rng, 8, gx, gy, 200));
     game.peds.push(...spawnPeds(game.rng, CFG.PED_COUNT));
+    // Cash stashes: collectible money hidden around the city.
+    for (let i = 0; i < CFG.STASH_COUNT; i += 1) {
+      const p = randomRoadPoint(game.rng, gx, gy, 400 + i * 120);
+      game.stashes.push({ x: p.x, y: p.y, taken: false, respawn: 0 });
+    }
     game.camera.snap(game.player.x, game.player.y, game.viewW, game.viewH);
   };
   game.reset();
@@ -127,24 +143,15 @@ const game = createGame(seed);
 window.__game = game;
 
 function resize() {
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
   game.viewW = window.innerWidth;
   game.viewH = window.innerHeight;
-  canvas.width = Math.round(game.viewW * ratio);
-  canvas.height = Math.round(game.viewH * ratio);
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  game.renderer.resize(game.viewW, game.viewH);
 }
 resize();
 window.addEventListener('resize', resize);
 
 function screenToWorld(mx, my) {
-  const zoom = game.camera.zoom;
-  const vw = game.viewW / zoom;
-  const vh = game.viewH / zoom;
-  const sx = clamp(game.camera.x - vw / 2, 0, WORLD_W - vw);
-  const sy = clamp(game.camera.y - vh / 2, 0, WORLD_H - vh);
-  return { x: sx + mx / zoom, y: sy + my / zoom };
+  return game.renderer.worldFromScreen(mx, my);
 }
 
 function announce(message) {
@@ -210,17 +217,47 @@ function updateBullets(dt) {
 function managePolice(dt) {
   const p = game.player;
   const wanted = p.wanted;
-  const active = game.cars.filter((c) => c.driver === 'police' && !c.wreck);
+  const active = game.cars.filter((c) => c.driver === 'police' && !c.wreck && !c.roadblock);
   const desired = Math.min(wanted, CFG.POLICE_MAX);
   if (active.length < desired) {
     const fresh = spawnPolice(game.city, game.rng, desired - active.length, p.x, p.y);
     game.cars.push(...fresh);
   }
+  // At 4 stars and above the police throw a roadblock across the road ahead
+  // of the player. It lifts when the heat drops.
+  if (wanted >= 4 && !game.roadblock) {
+    game.roadblock = true;
+    const fx = Math.cos(p.angle);
+    const fy = Math.sin(p.angle);
+    const aheadX = p.x + fx * 420;
+    const aheadY = p.y + fy * 420;
+    // The next intersection ahead of the player, on their heading.
+    const gx = Math.round(aheadX / CFG.PITCH) * CFG.PITCH;
+    const gy = Math.round(aheadY / CFG.PITCH) * CFG.PITCH;
+    const horizontal = Math.abs(fx) > Math.abs(fy);
+    for (const off of [-24, 24]) {
+      const car = makeCar(
+        horizontal ? gx : gx + off,
+        horizontal ? gy + off : gy,
+        horizontal ? Math.PI / 2 : 0,
+        'police', '#eef1f4', { driver: 'police' },
+      );
+      car.roadblock = true;
+      car.speed = 0;
+      game.cars.push(car);
+    }
+    game.toast('Roadblock ahead! The police are shutting the streets down!');
+  } else if (wanted < 4 && game.roadblock) {
+    game.roadblock = false;
+    for (let i = game.cars.length - 1; i >= 0; i -= 1) {
+      if (game.cars[i].roadblock) game.cars.splice(i, 1);
+    }
+  }
   // With no heat, distant police drive off and despawn.
   if (wanted === 0) {
     for (let i = game.cars.length - 1; i >= 0; i -= 1) {
       const c = game.cars[i];
-      if (c.driver === 'police' && Math.hypot(c.x - p.x, c.y - p.y) > 1000) {
+      if (c.driver === 'police' && !c.roadblock && Math.hypot(c.x - p.x, c.y - p.y) > 1000) {
         game.cars.splice(i, 1);
       }
     }
@@ -257,7 +294,10 @@ function updateMissionVan(dt) {
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
   van.angle += clamp(diff * 2, -1.6 * dt, 1.6 * dt);
-  van.speed = Math.min(van.speed + van.spec.accel * dt, van.targetSpeed);
+  // Slow down for the corner so the van stays on the road instead of
+  // cutting across the block.
+  const cornerSpeed = Math.hypot(dx, dy) < 160 ? 60 : van.targetSpeed;
+  van.speed = Math.min(van.speed + van.spec.accel * dt, cornerSpeed);
   van.x += Math.cos(van.angle) * van.speed * dt;
   van.y += Math.sin(van.angle) * van.speed * dt;
   resolveBuildingCollision(game.city, van, 20);
@@ -272,6 +312,82 @@ function updateMissionVan(dt) {
     }
   }
   if (van.ramCd > 0) van.ramCd -= dt;
+}
+
+// --- Taxi fares ------------------------------------------------------------
+// A pedestrian with a green marker wants a ride. Drive up in a car, they get
+// in, and you have 75 seconds to reach their destination for cash.
+function updateFare(dt) {
+  const p = game.player;
+  if (!game.fare) {
+    game.fareTimer -= dt;
+    if (game.fareTimer <= 0 && p.driving) {
+      const lm = game.city.landmarks;
+      const spots = [lm.plaza, lm.parkA, lm.parkB, lm.hospital, lm.bank];
+      const spot = spots[Math.floor(game.rng.next() * spots.length)];
+      const ped = makePed(spot.x + 30, spot.y + 30, 0, game.rng);
+      ped.target = { x: ped.x, y: ped.y };
+      game.peds.push(ped);
+      const dest = game.randomRoadPointFar(ped.x, ped.y, 900);
+      game.fare = { state: 'waiting', ped, dest, timer: 0 };
+      game.toast('A fare is waiting — drive up to the green marker to pick them up!');
+    }
+    return;
+  }
+  const f = game.fare;
+  if (f.state === 'waiting') {
+    if (!game.peds.includes(f.ped)) {
+      game.fare = null;
+      game.fareTimer = 20;
+      return;
+    }
+    if (p.driving && Math.hypot(p.x - f.ped.x, p.y - f.ped.y) < 46) {
+      // The fare gets in: remove them from the street and set the timer.
+      const i = game.peds.indexOf(f.ped);
+      if (i !== -1) game.peds.splice(i, 1);
+      f.state = 'riding';
+      f.timer = 75;
+      game.toast('Fare picked up! 75 seconds to the destination.');
+      game.audio.pickup();
+    }
+  } else if (f.state === 'riding') {
+    f.timer -= dt;
+    if (f.timer <= 0) {
+      game.toast('The fare gave up and walked away.');
+      game.fare = null;
+      game.fareTimer = 25;
+    } else if (Math.hypot(p.x - f.dest.x, p.y - f.dest.y) < 85) {
+      const reward = CFG.FARE_REWARD[0]
+        + Math.floor(game.rng.next() * (CFG.FARE_REWARD[1] - CFG.FARE_REWARD[0]));
+      p.cash += reward;
+      game.totalEarned += reward;
+      game.audio.cash();
+      game.toast(`Fare complete! +$${reward}`);
+      game.fare = null;
+      game.fareTimer = 25;
+      game.saveGame();
+    }
+  }
+}
+
+// --- Cash stashes ------------------------------------------------------------
+function updateStashes(dt) {
+  const p = game.player;
+  for (const s of game.stashes) {
+    if (s.taken) {
+      s.respawn -= dt;
+      if (s.respawn <= 0) s.taken = false;
+      continue;
+    }
+    if (Math.hypot(p.x - s.x, p.y - s.y) < 55) {
+      s.taken = true;
+      s.respawn = 60;
+      p.cash += CFG.STASH_REWARD;
+      game.totalEarned += CFG.STASH_REWARD;
+      game.audio.cash();
+      game.toast(`Cash stash found! +$${CFG.STASH_REWARD}`);
+    }
+  }
 }
 
 // --- One fixed step ----------------------------------------------------------
@@ -322,6 +438,8 @@ function update(dt) {
   managePolice(dt);
   updateMissionVan(dt);
   game.missions.update(dt);
+  updateFare(dt);
+  updateStashes(dt);
 
   // Traffic and pedestrian top-up.
   const traffic = game.cars.filter((c) => c.driver === 'traffic' && !c.wreck).length;
@@ -391,12 +509,13 @@ function respawn() {
     game.removeCar(p.inCar);
     p.inCar = null;
   }
-  p.x = g.x;
-  p.y = g.y + 60;
+  p.x = g.arrival.x;
+  p.y = g.arrival.y;
   p.angle = -Math.PI / 2;
   p.health = CFG.PLAYER_HEALTH;
   p.wanted = 0;
   p.bustTimer = 0;
+  game.input.takePressed();
   game.camera.snap(p.x, p.y, game.viewW, game.viewH);
   game.state = 'playing';
   game.hud.showOnly(null);
@@ -409,6 +528,7 @@ function startNewGame() {
   game.audio.click();
   game.reset();
   game.missions.start(0);
+  game.input.takePressed();
   game.state = 'playing';
   game.hud.showOnly(null);
   announce('Playing. Follow Vera\u2019s orders — steal a car first.');
@@ -424,6 +544,7 @@ function continueGame() {
   game.player.x = save.x;
   game.player.y = save.y;
   game.player.health = save.health;
+  game.input.takePressed();
   game.camera.snap(save.x, save.y, game.viewW, game.viewH);
   if (save.missionDone) {
     game.missions.done = true;
@@ -447,6 +568,9 @@ function pauseGame() {
 function resumeGame() {
   if (game.state !== 'paused') return;
   game.audio.click();
+  // Drain the queued presses: the P that resumed the game must not
+  // immediately pause it again on the next frame.
+  game.input.takePressed();
   game.state = 'playing';
   game.hud.showOnly(null);
   announce('Playing.');
@@ -524,9 +648,7 @@ document.addEventListener('visibilitychange', () => {
 
 // --- Render ------------------------------------------------------------------
 function render() {
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, game.viewW, game.viewH);
-  renderWorld(ctx, game, game.camera, game.time, game.viewW, game.viewH);
+  game.renderer.render(game, game.time);
   if (game.state !== 'title') game.hud.update(0);
 }
 

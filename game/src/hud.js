@@ -9,6 +9,7 @@ export class Hud {
     this.game = game;
     this.el = {
       cash: document.getElementById('hud-cash'),
+      rep: document.getElementById('hud-rep'),
       healthFill: document.getElementById('hud-health-fill'),
       healthText: document.getElementById('hud-health-text'),
       wanted: document.getElementById('hud-wanted'),
@@ -37,6 +38,15 @@ export class Hud {
     this._health = -1;
     this._wanted = -1;
     this._objective = '';
+    this._rep = '';
+  }
+
+  // Reputation title from lifetime earnings: the progression the player sees.
+  repTitle(earned) {
+    if (earned >= 6000) return 'Legend of Solstice';
+    if (earned >= 3000) return 'King of Solstice';
+    if (earned >= 1000) return 'Street Boss';
+    return 'Wheelman';
   }
 
   buildMinimapBase(cityCanvas) {
@@ -108,6 +118,11 @@ export class Hud {
       this._cash = p.cash;
       this.el.cash.textContent = `$${p.cash.toLocaleString('en-US')}`;
     }
+    const rep = this.repTitle(g.totalEarned || 0);
+    if (rep !== this._rep) {
+      this._rep = rep;
+      this.el.rep.textContent = rep;
+    }
     const hp = Math.max(0, Math.round(p.health));
     if (hp !== this._health) {
       this._health = hp;
@@ -173,6 +188,16 @@ export class Hud {
       c.closePath();
       c.fill();
       c.restore();
+    }
+    // Cash stashes (gold) and the taxi fare (green).
+    if (g.stashes) {
+      for (const s of g.stashes) {
+        if (!s.taken) dot(s.x, s.y, 2.5, '#e8b73a');
+      }
+    }
+    if (g.fare) {
+      if (g.fare.state === 'waiting' && g.fare.ped) dot(g.fare.ped.x, g.fare.ped.y, 4, '#3aa655');
+      else if (g.fare.state === 'riding' && g.fare.dest) dot(g.fare.dest.x, g.fare.dest.y, 4, '#3aa655');
     }
     // The player: a white triangle pointing where they face.
     const p = g.player;

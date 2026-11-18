@@ -8,17 +8,18 @@ An original open-world crime game in the spirit of GTA 6, built for make.fun's *
 
 ## The story
 
-Rico Marín owes money to Vera Solano, the fixer who runs sun-soaked **Solstice City** from her garage. Four missions stand between Rico and a clean slate: steal a car, run a hot delivery across town, pick up three stashes of cash, and finally stop the bank courier van and lose a three-star wanted level. Everything — the city, the people, the cars, the story — is original.
+Rico Marín owes money to Vera Solano, the fixer who runs sun-soaked **Solstice City** from her garage. Five missions stand between Rico and a clean slate: steal a car, run a hot delivery across town, pick up three stashes of cash, stop the bank courier van and lose a three-star wanted level, and finally drive Vera to the airstrip while the whole city hunts her. Everything — the city, the people, the cars, the story — is original.
 
 ## What is in the game
 
-- **A city to explore on foot and by car** — a seeded 12×12-block grid with roads, sidewalks, parks, a plaza, a beach and a bay, all pre-rendered once for smooth play.
-- **Traffic and pedestrians** — cars follow the road network and stop for each other; pedestrians walk the sidewalks and run when a gun goes off or a car screams past.
+- **A 3D city to explore on foot and by car** — a seeded 12×12-block grid rendered in three.js (vendored locally, no network): roads, sidewalks, parks, a plaza, an airstrip, a beach and a bay, with windowed buildings, trees, streetlights, sun and shadows.
+- **Traffic and pedestrians** — cars follow the road network in their lanes and stop for each other; pedestrians walk the sidewalks and run when a gun goes off or a car screams past.
 - **Cars to steal** — walk up to any car, press E, and it is yours. The driver bails out and the cops notice.
-- **A wanted level and police** — stars rise for stealing, hitting pedestrians, shooting, and ramming police. Police cars spawn, chase, and ram; get caught on foot and you are busted.
-- **Missions and a story** — four missions with briefings, markers, timers, and cash rewards, plus a story ending.
-- **Combat** — aim with the mouse and shoot on foot or from a car; cars take damage, smoke, and blow up.
-- **A HUD with a minimap** — cash, health, wanted stars, the current objective, speed, the time of day, and a live minimap with the player, police, and mission marker.
+- **A wanted level and police** — stars rise for stealing, hitting pedestrians, shooting, and ramming police. Police cars spawn, chase, and ram; at four stars they throw a roadblock across the road ahead. Get caught on foot and you are busted.
+- **Missions and a story** — five missions with briefings, markers, timers, and cash rewards, plus a story ending.
+- **Side activities and progression** — taxi fares (pick up a pedestrian and beat the clock), cash stashes hidden around the city, and a reputation title that grows with lifetime earnings: Wheelman, Street Boss, King of Solstice, Legend of Solstice.
+- **Combat** — aim with the mouse and shoot on foot or from a car; cars take damage, smoke, and blow up, with muzzle flashes, sparks, and skid marks.
+- **A HUD with a minimap** — cash, reputation, health, wanted stars, the current objective, speed, the time of day, and a live minimap with the player, police, mission marker, fares, and stashes.
 - **Start, pause, and save** — a title screen with New Game / Continue, a pause menu, busted/wasted screens, and automatic saving to localStorage.
 - **Sound** — engine hum, police sirens, gunshots, crashes, and jingles, all synthesized with WebAudio.
 
@@ -52,9 +53,9 @@ node serve.ts
 - `vehicles.js` — car physics, traffic AI, police AI
 - `pedestrians.js` — pedestrians and fleeing
 - `player.js` — Rico: walking, driving, shooting, wanted
-- `missions.js` — the four story missions
-- `render.js` — the camera and all drawing
-- `hud.js` — HUD, minimap, menus
+- `missions.js` — the five story missions
+- `render.js` — the three.js renderer: camera, sun and shadows, buildings, trees, cars, people, markers, effects
+- `hud.js` — HUD, minimap, menus, reputation
 - `save.js` — localStorage saving
 - `shots.js` — the deterministic screenshot scenes
 - `main.js` — boot and the game loop

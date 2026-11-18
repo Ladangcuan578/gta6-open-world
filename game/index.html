@@ -15,6 +15,7 @@
   .panel { background: rgba(12, 14, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; backdrop-filter: blur(2px); }
   #hud-topleft { position: absolute; top: 12px; left: 12px; padding: 10px 14px; min-width: 210px; }
   #hud-cash { font-size: 26px; font-weight: 800; color: #7dd87d; letter-spacing: 0.5px; }
+  #hud-rep { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #ffb37d; font-weight: 700; margin-top: 2px; }
   #hud-health-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
   #hud-health-bar { flex: 1; height: 10px; background: rgba(255,255,255,0.18); border-radius: 5px; overflow: hidden; }
   #hud-health-fill { height: 100%; width: 100%; background: #3aa655; transition: width 0.2s; }
@@ -59,6 +60,7 @@
 <div id="hud">
   <div id="hud-topleft" class="panel">
     <div id="hud-cash">$0</div>
+    <div id="hud-rep">Wheelman</div>
     <div id="hud-health-row">
       <div id="hud-health-bar"><div id="hud-health-fill"></div></div>
       <div id="hud-health-text">100</div>
@@ -91,7 +93,7 @@
   <div class="menu-card">
     <h1>SOLSTICE CITY</h1>
     <div class="subtitle">An open-world crime story</div>
-    <p>Rico Marín owes money to Vera Solano, the fixer who runs this sun-soaked city from her garage. Drive, steal, run jobs, and stay one step ahead of the Solstice City police — four missions stand between Rico and a clean slate.</p>
+    <p>Rico Marín owes money to Vera Solano, the fixer who runs this sun-soaked city from her garage. Drive, steal, run jobs, and stay one step ahead of the Solstice City police — five missions stand between Rico and a clean slate.</p>
     <div class="controls">
       <b>WASD / Arrows</b> — walk and drive &nbsp;·&nbsp; <b>E</b> — steal / enter a car<br>
       <b>Mouse + Click</b> — aim and shoot &nbsp;·&nbsp; <b>Shift</b> — sprint / handbrake<br>
@@ -126,12 +128,15 @@
 <div id="menu-story" class="menu hidden">
   <div class="menu-card">
     <h2 style="color:#ffd23e">DEBT PAID</h2>
-    <p>Rico walks out of the garage with the last of the cash, the courier van smoking behind him, and the whole of Solstice City in front of him. Vera nods once. The debt is gone — the city is his now.</p>
+    <p>Rico drops Vera at the airstrip as the sun comes up over the bay. The debt is gone, the heat is fading, and the whole of Solstice City is in front of him. Vera nods once. The city is his now.</p>
     <p style="text-align:center">Story complete. Free roam continues — steal cars, dodge the police, and enjoy the sun.</p>
     <button id="btn-story-continue">Keep playing</button>
   </div>
 </div>
 
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

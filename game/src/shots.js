@@ -55,13 +55,16 @@ export function stageShot(name, game) {
     const x = 4 * CFG.PITCH;
     const y = 6 * CFG.PITCH;
     putPlayerInCar(game, 'sport', x, y, 0);
-    // A few traffic cars ahead on the same avenue.
+    // A few traffic cars ahead on the same avenue, in the correct lane for
+    // their direction (the traffic AI only turns at intersections).
     const traffics = game.cars.filter((c) => c.driver === 'traffic').slice(0, 3);
     for (let i = 0; i < traffics.length; i += 1) {
       const t = traffics[i];
+      t.axis = 'x';
+      t.dir = i % 2 === 0 ? 1 : -1;
       t.x = x + 260 + i * 200;
-      t.y = y + (i % 2 === 0 ? 16 : -16);
-      t.angle = 0;
+      t.y = y + (t.dir > 0 ? 16 : -16);
+      t.angle = t.dir > 0 ? 0 : Math.PI;
       t.speed = 120;
     }
     game.hud.showOnly(null);
@@ -97,15 +100,21 @@ export function stageShot(name, game) {
     game.state = 'playing';
     game.missions.start(2);
     hideBrief(game);
+    // Put the first drop at the intersection by Jacaranda Park (block 3,6):
+    // the park sits south of the player, so the foreground is green trees
+    // instead of a tall building's roof.
     const drop = game.missions.drops[0];
-    // Close enough to read the scene, far enough (over 62px) that the drop
-    // is not collected during the staged steps.
-    game.player.x = drop.x + 58;
-    game.player.y = drop.y + 56;
+    drop.x = 3 * CFG.PITCH;
+    drop.y = 6 * CFG.PITCH;
+    // 80px east of the drop, on the same road: close enough to read the
+    // scene, far enough (over 62px) that the drop is not collected during
+    // the staged steps.
+    game.player.x = drop.x + 80;
+    game.player.y = drop.y;
     game.player.angle = Math.atan2(drop.y - game.player.y, drop.x - game.player.x);
     game.camera.snap(game.player.x, game.player.y, game.viewW, game.viewH);
     // A parked car and a few pedestrians nearby for life.
-    const parked = makeCar(drop.x - 120, drop.y + 60, Math.PI / 2, 'sedan', '#e8b73a', { driver: 'parked' });
+    const parked = makeCar(drop.x - 120, drop.y, 0, 'sedan', '#e8b73a', { driver: 'parked' });
     game.cars.push(parked);
     game.hud.showOnly(null);
     return { steps: STEPS.mission, drive: () => {} };
