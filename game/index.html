@@ -3,17 +3,135 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>Solstice City — an open-world crime story</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #14161c; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hidden { display: none !important; }
+
+  /* HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; z-index: 5; }
+  .panel { background: rgba(12, 14, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; backdrop-filter: blur(2px); }
+  #hud-topleft { position: absolute; top: 12px; left: 12px; padding: 10px 14px; min-width: 210px; }
+  #hud-cash { font-size: 26px; font-weight: 800; color: #7dd87d; letter-spacing: 0.5px; }
+  #hud-health-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  #hud-health-bar { flex: 1; height: 10px; background: rgba(255,255,255,0.18); border-radius: 5px; overflow: hidden; }
+  #hud-health-fill { height: 100%; width: 100%; background: #3aa655; transition: width 0.2s; }
+  #hud-health-text { font-size: 12px; color: #cfd6de; min-width: 26px; text-align: right; }
+  #hud-wanted { font-size: 22px; letter-spacing: 4px; margin-top: 4px; color: rgba(255,255,255,0.45); }
+  #hud-objective-wrap { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); text-align: center; max-width: 560px; padding: 8px 18px; }
+  #hud-mission { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #ffd23e; font-weight: 700; }
+  #hud-objective { font-size: 15px; margin-top: 2px; color: #f2f4f6; }
+  #hud-topright { position: absolute; top: 12px; right: 12px; padding: 8px; text-align: center; }
+  #minimap { width: 200px; height: 200px; display: block; border-radius: 6px; }
+  #hud-speed { font-size: 18px; font-weight: 700; margin-top: 4px; }
+  #hud-clock { font-size: 13px; color: #cfd6de; }
+  #hud-hint { position: absolute; bottom: 12px; left: 12px; padding: 8px 12px; font-size: 12px; color: #cfd6de; line-height: 1.6; }
+  #hud-hint b { color: #fff; }
+  #toast { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); padding: 10px 20px; font-size: 15px; font-weight: 600; background: rgba(12, 14, 20, 0.85); border: 1px solid #ffd23e; border-radius: 8px; color: #ffd23e; }
+  #brief { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); width: min(560px, 90vw); padding: 16px 20px; cursor: pointer; pointer-events: auto; }
+  #brief-title { font-size: 18px; font-weight: 800; color: #ffd23e; }
+  #brief-text { font-size: 14px; line-height: 1.55; margin-top: 6px; color: #eef1f5; }
+  #brief-giver { font-size: 12px; margin-top: 8px; color: #9aa3ad; text-align: right; }
+  #brief-dismiss { font-size: 11px; margin-top: 6px; color: #9aa3ad; text-align: center; }
+
+  /* Menus */
+  .menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8, 10, 16, 0.62); z-index: 10; }
+  .menu-card { width: min(620px, 92vw); background: rgba(14, 17, 24, 0.94); border: 1px solid rgba(255, 210, 62, 0.35); border-radius: 14px; padding: 28px 32px; color: #eef1f5; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .menu-card h1 { margin: 0; font-size: 44px; letter-spacing: 4px; color: #ffd23e; font-weight: 900; }
+  .menu-card h2 { margin: 0 0 8px; font-size: 32px; letter-spacing: 2px; font-weight: 900; }
+  .menu-card .subtitle { color: #ffb37d; letter-spacing: 3px; font-size: 13px; text-transform: uppercase; margin-top: 4px; }
+  .menu-card p { font-size: 15px; line-height: 1.6; color: #cfd6de; text-align: left; }
+  .menu-card .controls { text-align: left; font-size: 13px; line-height: 1.9; color: #cfd6de; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 16px; margin: 14px 0; }
+  .menu-card .controls b { color: #fff; }
+  .menu-card button { display: block; width: 100%; margin: 8px 0; padding: 13px; font-size: 16px; font-weight: 700; border: none; border-radius: 9px; cursor: pointer; background: #ffd23e; color: #1a1405; }
+  .menu-card button:hover { background: #ffe07a; }
+  .menu-card button.secondary { background: rgba(255,255,255,0.12); color: #eef1f5; }
+  .menu-card button.secondary:hover { background: rgba(255,255,255,0.2); }
+  .menu-card .fine { font-size: 12px; color: #8b93a3; margin-top: 12px; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Solstice City: an open-world crime game. Drive, steal cars, run missions, and dodge the police."></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud">
+  <div id="hud-topleft" class="panel">
+    <div id="hud-cash">$0</div>
+    <div id="hud-health-row">
+      <div id="hud-health-bar"><div id="hud-health-fill"></div></div>
+      <div id="hud-health-text">100</div>
+    </div>
+    <div id="hud-wanted">☆☆☆☆☆</div>
+  </div>
+  <div id="hud-objective-wrap" class="panel">
+    <div id="hud-mission">Free roam</div>
+    <div id="hud-objective">Welcome to Solstice City.</div>
+  </div>
+  <div id="hud-topright" class="panel">
+    <canvas id="minimap" width="200" height="200"></canvas>
+    <div id="hud-speed">On foot</div>
+    <div id="hud-clock">08:00</div>
+  </div>
+  <div id="hud-hint" class="panel">
+    <b>WASD</b> move / drive &nbsp; <b>E</b> enter car &nbsp; <b>Shift</b> sprint / handbrake<br>
+    <b>Mouse</b> aim &nbsp; <b>Click</b> shoot &nbsp; <b>P</b> pause &nbsp; <b>M</b> sound
+  </div>
+  <div id="toast" class="hidden"></div>
+  <div id="brief" class="panel hidden">
+    <div id="brief-title"></div>
+    <div id="brief-text"></div>
+    <div id="brief-giver"></div>
+    <div id="brief-dismiss">Click to dismiss</div>
+  </div>
+</div>
+
+<div id="menu-start" class="menu">
+  <div class="menu-card">
+    <h1>SOLSTICE CITY</h1>
+    <div class="subtitle">An open-world crime story</div>
+    <p>Rico Marín owes money to Vera Solano, the fixer who runs this sun-soaked city from her garage. Drive, steal, run jobs, and stay one step ahead of the Solstice City police — four missions stand between Rico and a clean slate.</p>
+    <div class="controls">
+      <b>WASD / Arrows</b> — walk and drive &nbsp;·&nbsp; <b>E</b> — steal / enter a car<br>
+      <b>Mouse + Click</b> — aim and shoot &nbsp;·&nbsp; <b>Shift</b> — sprint / handbrake<br>
+      <b>P</b> — pause &nbsp;·&nbsp; <b>M</b> — sound on/off &nbsp;·&nbsp; Progress saves automatically
+    </div>
+    <button id="btn-new">New Game</button>
+    <button id="btn-continue" class="secondary hidden">Continue</button>
+    <button id="btn-mute" class="secondary">Sound: On</button>
+    <div class="fine">A fully original game. No real city, person, or film is depicted. Runs offline — no network, no downloads.</div>
+  </div>
+</div>
+
+<div id="menu-pause" class="menu hidden">
+  <div class="menu-card">
+    <h2>PAUSED</h2>
+    <p style="text-align:center">The city waits. Your progress is saved.</p>
+    <button id="btn-resume">Resume</button>
+    <button id="btn-restart-mission" class="secondary">Restart current mission</button>
+    <button id="btn-restart-story" class="secondary">Restart the story</button>
+    <button id="btn-quit-title" class="secondary">Quit to title</button>
+  </div>
+</div>
+
+<div id="menu-end" class="menu hidden">
+  <div class="menu-card">
+    <h2 id="end-title">BUSTED</h2>
+    <p id="end-text" style="text-align:center"></p>
+    <button id="btn-end-continue">Back on the streets</button>
+  </div>
+</div>
+
+<div id="menu-story" class="menu hidden">
+  <div class="menu-card">
+    <h2 style="color:#ffd23e">DEBT PAID</h2>
+    <p>Rico walks out of the garage with the last of the cash, the courier van smoking behind him, and the whole of Solstice City in front of him. Vera nods once. The debt is gone — the city is his now.</p>
+    <p style="text-align:center">Story complete. Free roam continues — steal cars, dodge the police, and enjoy the sun.</p>
+    <button id="btn-story-continue">Keep playing</button>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

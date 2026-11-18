@@ -1,61 +1,77 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Solstice City — tuning constants and the shared palette.
+// One place for every number that shapes how the city plays and looks.
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
+export const CFG = {
+  // World geometry (pixels).
+  PITCH: 272, // block (200) + road (72)
+  BLOCK: 200,
+  ROAD: 72,
+  GRID: 12, // blocks per side
+  // World spans 0 .. GRID*PITCH; the bay sits south of it.
+  BAY: 420, // water strip depth south of the city
+  BEACH: 46, // sand strip between the last road and the water
 
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
+  // Player.
+  WALK_SPEED: 195,
+  SPRINT_SPEED: 300,
+  PLAYER_RADIUS: 13,
+  PLAYER_HEALTH: 100,
 
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  // Cars.
+  CAR_LENGTH: 48,
+  CAR_WIDTH: 24,
+  CAR_TYPES: {
+    sedan: { accel: 340, maxSpeed: 430, reverse: 170, grip: 2.6, health: 100 },
+    sport: { accel: 430, maxSpeed: 570, reverse: 180, grip: 2.2, health: 90 },
+    truck: { accel: 260, maxSpeed: 360, reverse: 150, grip: 3.0, health: 160 },
+    van: { accel: 300, maxSpeed: 400, reverse: 160, grip: 2.8, health: 170 },
+    police: { accel: 460, maxSpeed: 540, reverse: 190, grip: 2.4, health: 130 },
+  },
+
+  // Traffic and pedestrians.
+  TRAFFIC_COUNT: 16,
+  PED_COUNT: 26,
+  TRAFFIC_SPEED: [95, 150],
+
+  // Wanted.
+  WANTED_MAX: 5,
+  WANTED_DECAY_IDLE: 12, // seconds without a crime before it starts to fall
+  WANTED_DECAY_STEP: 6, // seconds per star lost while cooling down
+  POLICE_MAX: 4,
+
+  // Combat.
+  BULLET_SPEED: 1050,
+  BULLET_RANGE: 640,
+  BULLET_DAMAGE_CAR: 26,
+  BULLET_DAMAGE_PED: 60,
+  FIRE_COOLDOWN: 0.16,
+
+  // Missions.
+  MISSION_REWARDS: [500, 800, 1200, 3000],
+
+  // Save.
+  SAVE_KEY: 'solstice-city-save-v1',
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+// Sun-soaked palette: warm asphalt, pastel roofs, green parks, blue bay.
+export const PAL = {
+  asphalt: '#3d414c',
+  asphaltDark: '#34383f',
+  roadLine: '#e8c85a',
+  sidewalk: '#c2ab7f',
+  sidewalkEdge: '#a98f63',
+  curb: '#8f7a52',
+  grass: '#79a854',
+  grassDark: '#6a9a48',
+  sand: '#e6cf9a',
+  water: '#2f7fa8',
+  waterDeep: '#256b90',
+  parkPath: '#d8c49a',
+  buildingShadow: 'rgba(20, 16, 10, 0.28)',
+  roofs: ['#c96f4a', '#d9a05b', '#7fa8a0', '#b7c4a8', '#c9b458', '#a06a8a', '#8a9ab0', '#d98a7a'],
+  walls: ['#e8dcc8', '#dccbb2', '#cfd6c2', '#e3cfae', '#c9d4de'],
+  carColors: ['#c23b2e', '#2e6fc2', '#e8b73a', '#3aa655', '#e8e4da', '#7a4a9e', '#22262e', '#d97b2e'],
+  playerJacket: '#e8590c',
+  policeWhite: '#eef1f4',
+  policeBlack: '#1d2126',
 };
-
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
-};
-
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
-export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
-};
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';

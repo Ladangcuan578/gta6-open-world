@@ -1,141 +1,320 @@
-// Drawing only: the world's state and the current screen in, pixels out. The 1280x720 playfield
-// is scaled to fit the window and centred, the margin filled with the backdrop colour. Flat
-// rectangles and circles, canvas text for the HUD and the panels. Text that holds a number is
-// rebuilt only when the number changes, so a frame allocates nothing.
-import { FIELD, FONT, LIVES, PALETTE } from './config.js';
-import { KIND_COIN } from './world.js';
+// Solstice City — drawing only: the camera, the pre-rendered city, cars,
+// people, bullets, particles and the mission marker. No rules in here.
+import { CFG, PAL } from './config.js';
+import { clamp, lerp } from './random.js';
+import { WORLD_W, WORLD_H } from './city.js';
 
-export const SCREEN_TITLE = 'title';
-export const SCREEN_PLAY = 'play';
-export const SCREEN_PAUSED = 'paused';
-export const SCREEN_OVER = 'over';
+export class Camera {
+  constructor() {
+    this.x = 0;
+    this.y = 0;
+    this.zoom = 1;
+  }
 
-/** The panel's width; its height grows with its lines: room for the title, the lines and the prompt. */
-const PANEL = { width: 600, top: 134, line: 34, bottom: 70 };
-const LIFE_SIZE = 20;
-const LIFE_GAP = 8;
+  follow(tx, ty, dt, vw, vh) {
+    const k = 1 - Math.pow(0.001, dt);
+    this.x = lerp(this.x, tx, k);
+    this.y = lerp(this.y, ty, k);
+    this.x = clamp(this.x, vw / 2 / this.zoom, WORLD_W - vw / 2 / this.zoom);
+    this.y = clamp(this.y, vh / 2 / this.zoom, WORLD_H - vh / 2 / this.zoom);
+  }
 
-function cachedLabel(prefix) {
-  let value = -1;
-  let text = '';
-  return function label(next) {
-    if (next !== value) {
-      value = next;
-      text = prefix + next;
-    }
-    return text;
-  };
+  snap(tx, ty, vw, vh) {
+    this.x = clamp(tx, vw / 2 / this.zoom, WORLD_W - vw / 2 / this.zoom);
+    this.y = clamp(ty, vh / 2 / this.zoom, WORLD_H - vh / 2 / this.zoom);
+  }
 }
 
-export function createRenderer(canvas) {
-  const context = canvas.getContext('2d');
-  const view = { scale: 1, x: 0, y: 0 };
-  const scoreLabel = cachedLabel('Score ');
-  const levelLabel = cachedLabel('Level ');
-  const finalLabel = cachedLabel('Score ');
-  const bestLabel = cachedLabel('Best ');
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
 
-  function resize() {
-    const ratio = window.devicePixelRatio || 1;
-    const width = Math.round(window.innerWidth * ratio);
-    const height = Math.round(window.innerHeight * ratio);
-    canvas.width = width;
-    canvas.height = height;
-    view.scale = Math.min(width / FIELD.width, height / FIELD.height);
-    view.x = (width - FIELD.width * view.scale) / 2;
-    view.y = (height - FIELD.height * view.scale) / 2;
+export function drawCar(c, car, time) {
+  const L = CFG.CAR_LENGTH;
+  const W = CFG.CAR_WIDTH;
+  c.save();
+  c.translate(car.x, car.y);
+  c.rotate(car.angle);
+  // Shadow.
+  c.fillStyle = 'rgba(20,16,10,0.30)';
+  roundRect(c, -L / 2 + 4, -W / 2 + 5, L, W, 8);
+  c.fill();
+  // Body.
+  const isPolice = car.type === 'police';
+  c.fillStyle = isPolice ? PAL.policeWhite : car.color;
+  roundRect(c, -L / 2, -W / 2, L, W, 8);
+  c.fill();
+  if (isPolice) {
+    c.fillStyle = PAL.policeBlack;
+    c.fillRect(-L / 2 + 4, -W / 2, 10, W);
+    c.fillRect(L / 2 - 14, -W / 2, 10, W);
+  }
+  // Roof and windshield.
+  c.fillStyle = isPolice ? '#dfe6ec' : 'rgba(0,0,0,0.28)';
+  roundRect(c, -L / 2 + 12, -W / 2 + 4, L - 26, W - 8, 5);
+  c.fill();
+  c.fillStyle = 'rgba(180,220,240,0.85)';
+  c.fillRect(L / 2 - 14, -W / 2 + 5, 5, W - 10);
+  // Headlights.
+  c.fillStyle = '#ffe9a8';
+  c.fillRect(L / 2 - 2, -W / 2 + 3, 3, 5);
+  c.fillRect(L / 2 - 2, W / 2 - 8, 3, 5);
+  // Taillights.
+  c.fillStyle = '#c23b2e';
+  c.fillRect(-L / 2 + 1, -W / 2 + 3, 3, 5);
+  c.fillRect(-L / 2 + 1, W / 2 - 8, 3, 5);
+  if (isPolice) {
+    // Flashing light bar.
+    const phase = Math.floor(time * 4 + car.sirenPhase) % 2 === 0;
+    c.fillStyle = phase ? '#e5382e' : '#2e6fe8';
+    c.fillRect(-6, -W / 2 + 2, 12, 6);
+    c.fillStyle = phase ? '#2e6fe8' : '#e5382e';
+    c.fillRect(-6, W / 2 - 8, 12, 6);
+  }
+  if (car.smoke > 0) {
+    c.fillStyle = 'rgba(90,90,90,0.5)';
+    c.beginPath();
+    c.arc(-L / 2 + 4, 0, 8 + Math.sin(time * 6) * 2, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.restore();
+  if (car.wreck) {
+    c.save();
+    c.globalAlpha = 0.55;
+    c.fillStyle = '#22262e';
+    c.beginPath();
+    c.arc(car.x, car.y, 20, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+}
+
+export function drawPerson(c, x, y, angle, shirt, skin, walkPhase, isPlayer) {
+  c.save();
+  c.translate(x, y);
+  // Shadow.
+  c.fillStyle = 'rgba(20,16,10,0.28)';
+  c.beginPath();
+  c.ellipse(2, 4, 10, 7, 0, 0, Math.PI * 2);
+  c.fill();
+  const bob = Math.sin(walkPhase) * 1.5;
+  // Legs (two small dots that swing while walking).
+  c.fillStyle = '#2b2f38';
+  c.beginPath();
+  c.arc(-Math.cos(angle) * 4 + Math.sin(walkPhase) * 3, -Math.sin(angle) * 4 + bob, 3, 0, Math.PI * 2);
+  c.arc(-Math.cos(angle) * 4 - Math.sin(walkPhase) * 3, -Math.sin(angle) * 4 - bob, 3, 0, Math.PI * 2);
+  c.fill();
+  // Body.
+  c.fillStyle = shirt;
+  c.beginPath();
+  c.arc(0, 0, 9, 0, Math.PI * 2);
+  c.fill();
+  if (isPlayer) {
+    c.strokeStyle = '#fff';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, 11, 0, Math.PI * 2);
+    c.stroke();
+  }
+  // Head.
+  c.fillStyle = skin;
+  c.beginPath();
+  c.arc(Math.cos(angle) * 2, Math.sin(angle) * 2, 5.5, 0, Math.PI * 2);
+  c.fill();
+  // Facing tick.
+  c.strokeStyle = 'rgba(0,0,0,0.5)';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(Math.cos(angle) * 6, Math.sin(angle) * 6);
+  c.lineTo(Math.cos(angle) * 12, Math.sin(angle) * 12);
+  c.stroke();
+  c.restore();
+}
+
+export function renderWorld(c, game, camera, time, viewW, viewH) {
+  const zoom = camera.zoom;
+  const vw = viewW / zoom;
+  const vh = viewH / zoom;
+  const sx = clamp(camera.x - vw / 2, 0, WORLD_W - vw);
+  const sy = clamp(camera.y - vh / 2, 0, WORLD_H - vh);
+  // The static city, drawn from its pre-rendered canvas.
+  c.drawImage(game.cityCanvas, sx, sy, vw, vh, 0, 0, viewW, viewH);
+  c.save();
+  c.translate(-sx * zoom, -sy * zoom);
+  c.scale(zoom, zoom);
+
+  // Skid marks fade out.
+  for (const s of game.skids) {
+    c.save();
+    c.globalAlpha = Math.min(0.5, s.t / 5 * 0.5);
+    c.strokeStyle = '#1d2126';
+    c.lineWidth = 5;
+    c.beginPath();
+    c.moveTo(s.x - Math.cos(s.angle) * 18, s.y - Math.sin(s.angle) * 18);
+    c.lineTo(s.x + Math.cos(s.angle) * 18, s.y + Math.sin(s.angle) * 18);
+    c.stroke();
+    c.restore();
   }
 
-  const fonts = new Map();
-  function text(value, x, y, size, color, align) {
-    if (!fonts.has(size)) fonts.set(size, `${size}px ${FONT}`);
-    context.font = fonts.get(size);
-    context.fillStyle = color;
-    context.textAlign = align;
-    context.fillText(value, x, y);
+  // Cash drops.
+  for (const d of game.missions.drops) {
+    if (d.taken) continue;
+    const pulse = 1 + Math.sin(time * 5) * 0.12;
+    c.save();
+    c.translate(d.x, d.y);
+    c.scale(pulse, pulse);
+    c.fillStyle = '#2e7d32';
+    c.beginPath();
+    c.arc(0, 0, 14, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#e8b73a';
+    c.font = 'bold 15px system-ui, sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('$', 0, 1);
+    c.restore();
   }
 
-  function drawField(state) {
-    context.fillStyle = PALETTE.sky;
-    context.fillRect(0, 0, FIELD.width, FIELD.height);
-    context.fillStyle = PALETTE.ground;
-    context.fillRect(0, FIELD.groundY, FIELD.width, FIELD.height - FIELD.groundY);
-
-    const items = state.items;
-    for (let index = 0; index < items.length; index += 1) {
-      const item = items[index];
-      if (!item.active) continue;
-      if (item.kind === KIND_COIN) {
-        context.fillStyle = PALETTE.coin;
-        context.beginPath();
-        context.arc(item.x + item.width / 2, item.y + item.height / 2, item.width / 2, 0, Math.PI * 2);
-        context.fill();
-      } else {
-        context.fillStyle = PALETTE.block;
-        context.fillRect(item.x, item.y, item.width, item.height);
-      }
-    }
-
-    const player = state.player;
-    // Blink while invulnerable after a hit: hidden on every other tenth of a second.
-    if (player.invulnerable === 0 || Math.floor(player.invulnerable * 10) % 2 === 1) {
-      context.fillStyle = PALETTE.player;
-      context.fillRect(player.x, player.y, player.width, player.height);
-    }
+  // Mission marker: a pulsing ring with a bouncing arrow.
+  const marker = game.missions.marker();
+  if (marker) {
+    const pulse = 1 + Math.sin(time * 4) * 0.15;
+    c.save();
+    c.translate(marker.x, marker.y);
+    c.strokeStyle = '#ffd23e';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.arc(0, 0, 30 * pulse, 0, Math.PI * 2);
+    c.stroke();
+    c.fillStyle = '#ffd23e';
+    const bob = Math.sin(time * 4) * 5;
+    c.beginPath();
+    c.moveTo(0, -52 + bob);
+    c.lineTo(-10, -70 + bob);
+    c.lineTo(10, -70 + bob);
+    c.closePath();
+    c.fill();
+    c.restore();
   }
 
-  function drawHud(state) {
-    context.textBaseline = 'top';
-    text(scoreLabel(state.score), 24, 20, 28, PALETTE.text, 'left');
-    text(levelLabel(state.level), FIELD.width / 2, 20, 28, PALETTE.text, 'center');
-    const firstLife = FIELD.width - 24 - LIVES * (LIFE_SIZE + LIFE_GAP) + LIFE_GAP;
-    text('Lives', firstLife - 12, 20, 28, PALETTE.text, 'right');
-    for (let life = 0; life < LIVES; life += 1) {
-      context.fillStyle = life < state.lives ? PALETTE.player : PALETTE.ground;
-      context.fillRect(firstLife + life * (LIFE_SIZE + LIFE_GAP), 24, LIFE_SIZE, LIFE_SIZE);
-    }
+  // Cars: wrecks first, then the rest, player car last.
+  const cars = [...game.cars].sort((a, b) => (a === game.player.inCar ? 1 : 0) - (b === game.player.inCar ? 1 : 0));
+  for (const car of cars) drawCar(c, car, time);
+  // The courier van gets a marker ring of its own while it runs.
+  if (game.missions.van && !game.missions.van.wreck && game.missions.index === 3 && game.missions.step === 0) {
+    c.save();
+    c.strokeStyle = '#ff5a3c';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(game.missions.van.x, game.missions.van.y, 34 + Math.sin(time * 5) * 3, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
   }
 
-  function drawPanel(title, lines, prompt) {
-    const height = PANEL.top + lines.length * PANEL.line + PANEL.bottom;
-    const x = (FIELD.width - PANEL.width) / 2;
-    const y = (FIELD.height - height) / 2;
-    context.fillStyle = PALETTE.panel;
-    context.fillRect(x, y, PANEL.width, height);
-    context.textBaseline = 'alphabetic';
-    text(title, FIELD.width / 2, y + 78, 48, PALETTE.text, 'center');
-    for (let index = 0; index < lines.length; index += 1) {
-      text(lines[index], FIELD.width / 2, y + PANEL.top + index * PANEL.line, 22, PALETTE.muted, 'center');
-    }
-    text(prompt, FIELD.width / 2, y + height - 40, 24, PALETTE.coin, 'center');
-  }
-
-  const TITLE_LINES = ['Dodge the red blocks. Catch the gold coins.', 'Move with ← → or A D.  Pause with P.', ''];
-  const PAUSED_LINES = ['The blocks will wait for you.'];
-  const OVER_LINES = ['', ''];
-
-  /** Paint one frame: the field, then the HUD or a panel for the screen the game is on. */
-  function draw(state, screen, best) {
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.fillStyle = PALETTE.backdrop;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
-    drawField(state);
-    if (screen === SCREEN_TITLE) {
-      TITLE_LINES[2] = bestLabel(best);
-      drawPanel('Block Dodger', TITLE_LINES, 'Press Space or click to start');
-      return;
-    }
-    drawHud(state);
-    if (screen === SCREEN_PAUSED) drawPanel('Paused', PAUSED_LINES, 'Press P to resume');
-    else if (screen === SCREEN_OVER) {
-      OVER_LINES[0] = finalLabel(state.score);
-      OVER_LINES[1] = bestLabel(best);
-      drawPanel('Game over', OVER_LINES, 'Press Space or click to play again');
+  // Pedestrians.
+  for (const ped of game.peds) {
+    if (ped.down) {
+      c.save();
+      c.translate(ped.x, ped.y);
+      c.rotate(ped.angle);
+      c.fillStyle = 'rgba(20,16,10,0.3)';
+      c.beginPath();
+      c.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = ped.shirt;
+      c.beginPath();
+      c.ellipse(0, 0, 9, 6, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    } else {
+      drawPerson(c, ped.x, ped.y, ped.angle, ped.shirt, ped.skin, ped.walkPhase, false);
     }
   }
 
-  resize();
-  window.addEventListener('resize', resize);
-  return { draw };
+  // The player on foot.
+  const p = game.player;
+  if (!p.driving) {
+    drawPerson(c, p.x, p.y, p.angle, PAL.playerJacket, '#e8b98a', p.speed > 0 ? time * 10 : 0, true);
+  }
+
+  // Bullets.
+  c.fillStyle = '#ffe9a8';
+  for (const b of game.bullets) {
+    c.save();
+    c.translate(b.x, b.y);
+    c.rotate(b.angle);
+    c.fillRect(-6, -1.5, 12, 3);
+    c.restore();
+  }
+
+  // Particles.
+  for (const pt of game.particles) {
+    if (pt.kind === 'smoke') {
+      c.save();
+      c.globalAlpha = Math.max(0, pt.t / 0.7) * 0.55;
+      c.fillStyle = '#5a5a5a';
+      c.beginPath();
+      c.arc(pt.x, pt.y, 10 + (0.7 - pt.t) * 22, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    } else if (pt.kind === 'flash') {
+      c.save();
+      c.globalAlpha = Math.max(0, pt.t / 0.08);
+      c.fillStyle = '#ffe9a8';
+      c.beginPath();
+      c.arc(pt.x, pt.y, 9, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    } else if (pt.kind === 'explosion') {
+      c.save();
+      c.globalAlpha = Math.max(0, pt.t / 0.6);
+      c.fillStyle = '#ff7a2e';
+      c.beginPath();
+      c.arc(pt.x, pt.y, 14 + (0.6 - pt.t) * 40, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#ffd23e';
+      c.beginPath();
+      c.arc(pt.x, pt.y, 8 + (0.6 - pt.t) * 20, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+  }
+  c.restore();
+
+  // Screen-edge arrow to an off-screen mission marker.
+  if (marker) {
+    const mx = (marker.x - sx) * zoom;
+    const my = (marker.y - sy) * zoom;
+    if (mx < 0 || mx > viewW || my < 0 || my > viewH) {
+      const cx = viewW / 2;
+      const cy = viewH / 2;
+      const angle = Math.atan2(my - cy, mx - cx);
+      const ex = cx + Math.cos(angle) * (Math.min(viewW, viewH) / 2 - 60);
+      const ey = cy + Math.sin(angle) * (Math.min(viewW, viewH) / 2 - 60);
+      const dist = Math.round(Math.hypot(marker.x - p.x, marker.y - p.y));
+      c.save();
+      c.translate(ex, ey);
+      c.rotate(angle);
+      c.fillStyle = '#ffd23e';
+      c.beginPath();
+      c.moveTo(16, 0);
+      c.lineTo(-10, -11);
+      c.lineTo(-10, 11);
+      c.closePath();
+      c.fill();
+      c.restore();
+      c.save();
+      c.fillStyle = '#ffd23e';
+      c.font = 'bold 13px system-ui, sans-serif';
+      c.textAlign = 'center';
+      c.fillText(`${marker.label} · ${dist}m`, ex, ey + 28);
+      c.restore();
+    }
+  }
 }
