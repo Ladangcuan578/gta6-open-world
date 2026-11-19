@@ -64,6 +64,8 @@ function createGame(seedValue) {
     fareTimer: 0,
     stashes: [],
     roadblock: false,
+    shake: 0, // camera shake, set to 1 by explosions, decays to 0
+    heli: { active: false, x: 0, y: 0 }, // police helicopter, 4 stars and up
   };
   // Rico starts on the road outside Vera's garage, not inside the building.
   game.player = new Player(city.landmarks.garage.arrival.x, city.landmarks.garage.arrival.y);
@@ -127,6 +129,15 @@ function createGame(seedValue) {
     const gy = city.landmarks.garage.y;
     game.cars.push(...spawnTraffic(city, game.rng, CFG.TRAFFIC_COUNT, gx, gy, 260));
     game.cars.push(...spawnParked(city, game.rng, 8, gx, gy, 200));
+    // A red sport parked just east of Vera's garage, facing east down a long
+    // clear avenue: mission 1 is "steal a car", and a new player should find
+    // one right outside the garage instead of hunting the whole city.
+    const starter = makeCar(
+      city.landmarks.garage.arrival.x + 140,
+      city.landmarks.garage.arrival.y,
+      0, 'sport', '#c23b2e', { driver: 'parked' },
+    );
+    game.cars.push(starter);
     game.peds.push(...spawnPeds(game.rng, CFG.PED_COUNT));
     // Cash stashes: collectible money hidden around the city.
     for (let i = 0; i < CFG.STASH_COUNT; i += 1) {
@@ -189,6 +200,7 @@ function updateBullets(dt) {
           if (wasWreck) {
             game.particles.push({ kind: 'explosion', x: car.x, y: car.y, t: 0.6 });
             game.audio.crash();
+            game.shake = 1; // explosions shake the chase cam
             if (car.driver === 'police') game.toast('Police car disabled!');
           }
           dead = true;
@@ -277,6 +289,33 @@ function managePolice(dt) {
   });
 }
 
+// --- Police helicopter -------------------------------------------------------
+// From 4 stars up a helicopter joins the chase: it hovers over the player,
+// its searchlight sweeping the street below. It never lands and never
+// collides — it is pure pressure, and pure spectacle in the screenshots.
+function manageHeli(dt) {
+  const p = game.player;
+  const heli = game.heli;
+  if (p.wanted >= CFG.HELI_WANTED && !heli.active) {
+    heli.active = true;
+    // Spawn ahead of the player, in the chase camera's view — never right
+    // next to the camera, or its searchlight cone floods the whole frame.
+    heli.x = p.x + 140;
+    heli.y = p.y - 40;
+    game.toast('Police helicopter overhead — they can see everything!');
+  } else if (p.wanted < CFG.HELI_WANTED && heli.active) {
+    heli.active = false;
+  }
+  if (heli.active) {
+    // The heli lags a little behind the player, circling slowly.
+    const t = game.time * 0.25;
+    const tx = p.x + Math.cos(t) * 90;
+    const ty = p.y + Math.sin(t) * 90;
+    heli.x += (tx - heli.x) * Math.min(1, dt * 1.5);
+    heli.y += (ty - heli.y) * Math.min(1, dt * 1.5);
+  }
+}
+
 // --- Mission van -------------------------------------------------------------
 function updateMissionVan(dt) {
   const van = game.missions.van;
@@ -300,6 +339,7 @@ function updateMissionVan(dt) {
   van.speed = Math.min(van.speed + van.spec.accel * dt, cornerSpeed);
   van.x += Math.cos(van.angle) * van.speed * dt;
   van.y += Math.sin(van.angle) * van.speed * dt;
+  van.wheelSpin += (van.speed * dt) / 4.5;
   resolveBuildingCollision(game.city, van, 20);
   // The player can ram the van to stop it.
   const p = game.player;
@@ -436,10 +476,13 @@ function update(dt) {
   updatePeds(game.peds, dt, game.rng);
   updateBullets(dt);
   managePolice(dt);
+  manageHeli(dt);
   updateMissionVan(dt);
   game.missions.update(dt);
   updateFare(dt);
   updateStashes(dt);
+  // Camera shake decays over half a second.
+  if (game.shake > 0) game.shake = Math.max(0, game.shake - dt * 2);
 
   // Traffic and pedestrian top-up.
   const traffic = game.cars.filter((c) => c.driver === 'traffic' && !c.wreck).length;
@@ -541,6 +584,7 @@ function continueGame() {
   game.audio.click();
   game.reset();
   game.player.cash = save.cash;
+  game.totalEarned = save.totalEarned || 0;
   game.player.x = save.x;
   game.player.y = save.y;
   game.player.health = save.health;

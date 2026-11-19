@@ -313,18 +313,31 @@ export function prerenderCity(city) {
       c.fillRect(d, p - 2, 30, 4);
     }
   }
-  c.fillStyle = 'rgba(238, 241, 244, 0.85)';
+  // Dusk extras: solid white edge lines so the avenues read at sunset,
+  // pale parking bays along the east side of every third avenue, and a
+  // planked boardwalk facing the bay.
+  c.strokeStyle = 'rgba(238, 238, 228, 0.45)';
+  c.lineWidth = 2.5;
   for (let i = 0; i <= CFG.GRID; i += 1) {
-    for (let j = 0; j <= CFG.GRID; j += 1) {
-      const px = i * CFG.PITCH;
-      const py = j * CFG.PITCH;
-      for (let s = -30; s <= 30; s += 12) {
-        c.fillRect(px + s - 3, py - ROAD_HALF + 4, 6, 12);
-        c.fillRect(px + s - 3, py + ROAD_HALF - 16, 6, 12);
-        c.fillRect(px - ROAD_HALF + 4, py + s - 3, 12, 6);
-        c.fillRect(px + ROAD_HALF - 16, py + s - 3, 12, 6);
-      }
+    const p = i * CFG.PITCH;
+    const e1 = p - ROAD_HALF + 5;
+    const e2 = p + ROAD_HALF - 5;
+    c.beginPath(); c.moveTo(e1, 0); c.lineTo(e1, WORLD_W); c.stroke();
+    c.beginPath(); c.moveTo(e2, 0); c.lineTo(e2, WORLD_W); c.stroke();
+    c.beginPath(); c.moveTo(0, e1); c.lineTo(WORLD_W, e1); c.stroke();
+    c.beginPath(); c.moveTo(0, e2); c.lineTo(WORLD_W, e2); c.stroke();
+  }
+  c.fillStyle = 'rgba(220, 220, 210, 0.30)';
+  for (let gx = 0; gx < CFG.GRID; gx += 3) {
+    const x = gx * CFG.PITCH + ROAD_HALF - 14;
+    for (let gy = 0; gy < CFG.GRID; gy += 1) {
+      const y = gy * CFG.PITCH + ROAD_HALF + 40;
+      for (let s = 0; s < 3; s += 1) c.fillRect(x, y + s * 56, 10, 40);
     }
   }
+  c.fillStyle = '#c9a87e';
+  c.fillRect(0, WORLD_W + 4, WORLD_W, 10);
+  c.fillStyle = 'rgba(120, 90, 50, 0.5)';
+  for (let x = 0; x < WORLD_W; x += 18) c.fillRect(x, WORLD_W + 4, 2, 10);
   return canvas;
 }

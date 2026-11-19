@@ -24,6 +24,10 @@ export function makeCar(x, y, angle, type, color, opts = {}) {
     smoke: 0,
     wreck: false,
     wreckTimer: 0,
+    wheelSpin: 0, // accumulated wheel rotation for the 3D renderer's spin
+    headlights: true, // dusk: every car's lights are on unless toggled off
+    // Police callsign for the HUD's response panel (SCPD-01, SCPD-02, ...).
+    callsign: type === 'police' ? `SCPD-${String(carId).padStart(2, '0')}` : null,
     // Deterministic from the car id (golden-angle spread), so the police
     // light bars flash the same way on every run — the screenshots must be
     // byte-identical when re-shot.
@@ -102,8 +106,10 @@ function pickTurn(car, rng) {
 export function spawnTraffic(city, rng, count, avoidX, avoidY, avoidR) {
   const cars = [];
   for (let i = 0; i < count; i += 1) {
-    const type = rng.pick(['sedan', 'sedan', 'sedan', 'sport', 'truck', 'van']);
-    const car = makeCar(0, 0, 0, type, rng.pick(PAL.carColors));
+    // Weighted mix: mostly sedans, a few sports, trucks, vans and taxis
+    // (the yellow cabs are part of the sunset street look).
+    const type = rng.weighted([['sedan', 3], ['sport', 1], ['truck', 1], ['van', 1], ['taxi', 1]]);
+    const car = makeCar(0, 0, 0, type, type === 'taxi' ? '#e8b73a' : rng.pick(PAL.carColors));
     // Start on a random road, already on the correct lane for its direction.
     // Retry a few times so the car does not spawn on top of the player.
     for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -121,11 +127,11 @@ export function spawnParked(city, rng, count, avoidX, avoidY, avoidR) {
   const cars = [];
   for (let i = 0; i < count; i += 1) {
     const p = randomRoadPoint(rng, avoidX, avoidY, avoidR);
-    const type = rng.pick(['sedan', 'sport', 'sedan', 'truck']);
+    const type = rng.weighted([['sedan', 2], ['sport', 1], ['truck', 1], ['taxi', 1]]);
     const angle = Math.round(p.x / CFG.PITCH) === p.x / CFG.PITCH
       ? (rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2)
       : (rng.chance(0.5) ? 0 : Math.PI);
-    const car = makeCar(p.x + rng.range(-8, 8), p.y + rng.range(-8, 8), angle, type, rng.pick(PAL.carColors), { driver: 'parked' });
+    const car = makeCar(p.x + rng.range(-8, 8), p.y + rng.range(-8, 8), angle, type, type === 'taxi' ? '#e8b73a' : rng.pick(PAL.carColors), { driver: 'parked' });
     cars.push(car);
   }
   return cars;
@@ -147,6 +153,7 @@ export function stepCar(car, dt, drive, city) {
   const ny = car.y + Math.sin(car.angle) * car.speed * dt;
   car.x = nx;
   car.y = ny;
+  car.wheelSpin += (car.speed * dt) / 4.5;
   const hit = resolveBuildingCollision(city, car, 20);
   if (hit) car.speed *= 0.55;
   return hit;
@@ -201,6 +208,7 @@ export function updateTraffic(cars, dt, city, rng, playerCar) {
       const lineX = Math.round(car.x / CFG.PITCH) * CFG.PITCH;
       car.x = lineX + laneOffset(car);
     }
+    car.wheelSpin += (car.speed * dt) / 4.5;
 
     // Next intersection along this axis: snap to it and pick a turn.
     const pos = car.axis === 'x' ? car.x : car.y;
@@ -278,6 +286,7 @@ export function updatePolice(cars, dt, city, player, onRam) {
       car.angle += drive.steer * dt * 1.4;
       car.x += Math.cos(car.angle) * car.speed * dt;
       car.y += Math.sin(car.angle) * car.speed * dt;
+      car.wheelSpin += (car.speed * dt) / 4.5;
       resolveBuildingCollision(city, car, 20);
     } else {
       drive = {

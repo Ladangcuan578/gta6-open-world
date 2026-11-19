@@ -1,7 +1,7 @@
 // Solstice City — the HUD: cash, health, wanted stars, the objective line,
 // the minimap, toasts, and every menu (start, pause, busted, wasted, story).
 // The world is canvas; the interface is DOM, so it stays crisp at any size.
-import { CFG } from './config.js';
+import { CFG, RADIO } from './config.js';
 import { WORLD_W, WORLD_H } from './city.js';
 
 export class Hud {
@@ -15,8 +15,15 @@ export class Hud {
       wanted: document.getElementById('hud-wanted'),
       objective: document.getElementById('hud-objective'),
       missionName: document.getElementById('hud-mission'),
+      stage: document.getElementById('hud-stage'),
       speed: document.getElementById('hud-speed'),
+      gear: document.getElementById('hud-gear'),
       clock: document.getElementById('hud-clock'),
+      policePanel: document.getElementById('hud-police'),
+      policeList: document.getElementById('hud-police-list'),
+      radio: document.getElementById('hud-radio-track'),
+      crew: document.getElementById('hud-crew'),
+      crewLine: document.getElementById('hud-crew-line'),
       toast: document.getElementById('toast'),
       brief: document.getElementById('brief'),
       briefTitle: document.getElementById('brief-title'),
@@ -39,6 +46,10 @@ export class Hud {
     this._wanted = -1;
     this._objective = '';
     this._rep = '';
+    this._stage = '';
+    this._crewLine = '';
+    this._radioIdx = -1;
+    this._policeAt = 0; // police panel rebuilds at most twice a second
   }
 
   // Reputation title from lifetime earnings: the progression the player sees.
@@ -146,9 +157,59 @@ export class Hud {
     this.el.missionName.textContent = g.missions.done
       ? 'Story complete'
       : m ? m.name : 'Free roam';
-    this.el.speed.textContent = p.driving
-      ? `${Math.round(Math.abs(p.inCar.speed) * 0.36)} km/h`
-      : 'On foot';
+    // Stage line: STAGE 3/7 while a job runs, FREE ROAM otherwise.
+    const stage = g.missions.active && !g.missions.done
+      ? `STAGE ${g.missions.index + 1}/${g.missions.total}`
+      : 'FREE ROAM';
+    if (stage !== this._stage) {
+      this._stage = stage;
+      this.el.stage.textContent = stage;
+    }
+    // Vera's dialogue bar: the current job's one-line quip, bottom centre.
+    const line = m && g.missions.active && !g.missions.done ? m.line : '';
+    if (line !== this._crewLine) {
+      this._crewLine = line;
+      if (line) {
+        this.el.crewLine.textContent = line;
+        this.el.crew.classList.remove('hidden');
+      } else {
+        this.el.crew.classList.add('hidden');
+      }
+    }
+    // Radio strip: a new track every 40 seconds of play.
+    const trackIdx = Math.floor(g.time / 40) % RADIO.tracks.length;
+    if (trackIdx !== this._radioIdx) {
+      this._radioIdx = trackIdx;
+      this.el.radio.textContent = `${RADIO.station} — ${RADIO.tracks[trackIdx]}`;
+    }
+    // Police response panel: every active unit, its callsign, its distance
+    // in metres, and what it is doing. Rebuilt twice a second at most.
+    if (g.time - this._policeAt > 0.5) {
+      this._policeAt = g.time;
+      const units = g.cars.filter((c) => c.driver === 'police' && !c.wreck);
+      const show = p.wanted > 0 || (g.heli && g.heli.active);
+      this.el.policePanel.classList.toggle('hidden', !show);
+      if (show) {
+        let html = '';
+        for (const c of units) {
+          const dist = Math.round(Math.hypot(c.x - p.x, c.y - p.y) / 10);
+          const status = c.roadblock ? 'ROADBLOCK' : c.ramming ? 'RAMMING' : 'PURSUIT';
+          const cls = c.roadblock ? 'rb' : c.ramming ? 'ram' : 'pur';
+          html += `<div class="pol-row"><span class="pol-name">${c.callsign || 'SCPD'}</span><span class="pol-dist">${dist}m</span><span class="pol-status ${cls}">${status}</span></div>`;
+        }
+        if (g.heli && g.heli.active) {
+          html += '<div class="pol-row"><span class="pol-name">HELI-1</span><span class="pol-dist">—</span><span class="pol-status ram">AIRBORNE</span></div>';
+        }
+        if (!html) html = '<div class="pol-row"><span class="pol-name">No units on scene</span></div>';
+        this.el.policeList.innerHTML = html;
+      }
+    }
+    const speedKmh = p.driving ? Math.round(Math.abs(p.inCar.speed) * 0.36) : 0;
+    this.el.speed.textContent = p.driving ? `${speedKmh} km/h` : 'On foot';
+    // Gear from speed: 1 at a crawl, 5 flat out.
+    this.el.gear.textContent = p.driving
+      ? `G${Math.min(5, 1 + Math.floor(Math.abs(p.inCar.speed) / 115))}`
+      : '';
     const hours = 8 + Math.floor(g.clock / 3600);
     const mins = Math.floor((g.clock % 3600) / 60);
     this.el.clock.textContent = `${String(hours % 24).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
@@ -162,6 +223,9 @@ export class Hud {
     const H = 200;
     c.clearRect(0, 0, W, H);
     if (this.minimapBase) c.drawImage(this.minimapBase, 0, 0, W, H);
+    // Dusk tint over the minimap so it matches the sunset world.
+    c.fillStyle = 'rgba(46, 20, 64, 0.16)';
+    c.fillRect(0, 0, W, H);
     const sx = W / WORLD_W;
     const sy = H / WORLD_H;
     const dot = (x, y, r, color) => {

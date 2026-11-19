@@ -26,6 +26,18 @@ export function makeRng(seed) {
     pick(list) {
       return list[Math.floor(next() * list.length)];
     },
+    // Pick an entry by weight: pairs are [value, weight]. Deterministic,
+    // so the same seed always deals the same mix of sedans and taxis.
+    weighted(pairs) {
+      let total = 0;
+      for (const [, w] of pairs) total += w;
+      let roll = next() * total;
+      for (const [value, w] of pairs) {
+        roll -= w;
+        if (roll <= 0) return value;
+      }
+      return pairs[pairs.length - 1][0];
+    },
     chance(p) {
       return next() < p;
     },

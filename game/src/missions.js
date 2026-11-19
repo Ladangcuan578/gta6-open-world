@@ -1,6 +1,7 @@
-// Solstice City — the story: five missions for Rico Marín, from Vera Solano,
+// Solstice City — the story: seven missions for Rico Marín, from Vera Solano,
 // the fixer who owns his debt. Each mission is a small state machine with a
-// marker on the map, an objective line, and a cash reward.
+// marker on the map, an objective line, and a cash reward. `line` is the
+// one-line Vera quip the HUD's dialogue bar shows while the job runs.
 
 export const MISSIONS = [
   {
@@ -8,6 +9,7 @@ export const MISSIONS = [
     name: 'Mission 1 — First Wheels',
     giver: 'Vera Solano',
     brief: 'Rico, you owe me. First job is simple: get wheels. Steal any car off the street and bring it to my garage. Don\u2019t make a scene — or do, I don\u2019t care, just bring the car.',
+    line: 'Get wheels, Rico. Any car. Don\u2019t make a scene — or do, I don\u2019t care.',
     reward: 500,
   },
   {
@@ -15,6 +17,7 @@ export const MISSIONS = [
     name: 'Mission 2 — Hot Delivery',
     giver: 'Vera Solano',
     brief: 'A package is waiting at the garage. It has to be at the Marina in 100 seconds, and the buyer does not wait. Drive like the rent is due — because it is.',
+    line: 'The buyer does not wait. Drive like the rent is due — because it is.',
     reward: 800,
   },
   {
@@ -22,6 +25,7 @@ export const MISSIONS = [
     name: 'Mission 3 — The Pickup',
     giver: 'Vera Solano',
     brief: 'Three drops are stashed around Solstice City. Pick them all up. Every drop is hot, so expect the boys in blue to take an interest. Bring me the cash.',
+    line: 'Three drops, all hot. The boys in blue will take an interest. Bring me the cash.',
     reward: 1200,
   },
   {
@@ -29,6 +33,7 @@ export const MISSIONS = [
     name: 'Mission 4 — The Big One',
     giver: 'Vera Solano',
     brief: 'The bank courier van runs the same loop every morning, fat with cash. Stop it — ram it, shoot it, I don\u2019t care — grab the money and lose the heat at the safehouse. Do this and your debt is gone.',
+    line: 'Stop the courier van. Ram it, shoot it, I don\u2019t care. Your debt rides on this.',
     reward: 3000,
   },
   {
@@ -36,13 +41,31 @@ export const MISSIONS = [
     name: 'Mission 5 — Airport Run',
     giver: 'Vera Solano',
     brief: 'Debt\u2019s gone, Rico — but the heat isn\u2019t. I need out of Solstice tonight. Pick me up at the garage and get me to the airstrip in two minutes. The cops know my face, so expect company.',
+    line: 'Pick me up at the garage and get me to the airstrip. The cops know my face.',
     reward: 2000,
+  },
+  {
+    id: 'the-long-con',
+    name: 'Mission 6 — The Long Con',
+    giver: 'Vera Solano',
+    brief: 'Four more drops, Rico — the last of the old crew\u2019s stash, scattered across the city. You have 150 seconds before the street sweeps them up. Every drop is hot, so keep moving.',
+    line: 'Four drops, 150 seconds, then the street sweeps them up. Keep moving, Rico.',
+    reward: 2500,
+  },
+  {
+    id: 'the-last-score',
+    name: 'Mission 7 — The Last Score',
+    giver: 'Vera Solano',
+    brief: 'One last job and we are done: the bank vault, tonight, while the sun goes down. Grab the score, and every cop in Solstice will be on you — five stars, helicopters, everything. Get to the airstrip in 150 seconds and we fly out rich.',
+    line: 'The vault, Rico — then five stars and a helicopter. Get to the airstrip and we fly out rich.',
+    reward: 4000,
   },
 ];
 
 export class MissionManager {
   constructor(game) {
     this.game = game;
+    this.total = MISSIONS.length; // seven jobs now — the HUD shows STAGE x/7
     this.index = 0; // current mission
     this.step = 0;
     this.active = false;
@@ -110,6 +133,25 @@ export class MissionManager {
       } else {
         this.timer = 120;
       }
+    } else if (this.index === 5) {
+      // Four drops on a 150-second clock. Always re-deal here: the drops
+      // array may still hold mission 3's taken drops when we arrive from
+      // mission 5, and fail() clears it before re-calling setupStep.
+      if (this.step === 0) {
+        this.timer = 150;
+        this.drops = [];
+        this.dropsCollected = 0;
+        for (let i = 0; i < 4; i += 1) {
+          const p = g.randomRoadPointFar(g.player.x, g.player.y, 500 + i * 260);
+          this.drops.push({ x: p.x, y: p.y, taken: false });
+        }
+      }
+    } else if (this.index === 6) {
+      if (this.step === 0) {
+        this.timer = 0;
+      } else {
+        this.timer = 150;
+      }
     }
   }
 
@@ -137,6 +179,14 @@ export class MissionManager {
       if (this.step === 0) return { x: lm.garage.arrival.x, y: lm.garage.arrival.y, label: 'Pick up Vera' };
       return { x: lm.airstrip.arrival.x, y: lm.airstrip.arrival.y, label: 'Solstice Airstrip' };
     }
+    if (this.index === 5) {
+      const next = this.drops.find((d) => !d.taken);
+      return next ? { x: next.x, y: next.y, label: `Cash drop ${this.dropsCollected + 1} of 4` } : null;
+    }
+    if (this.index === 6) {
+      if (this.step === 0) return { x: lm.bank.arrival.x, y: lm.bank.arrival.y, label: 'Hit the bank vault' };
+      return { x: lm.airstrip.arrival.x, y: lm.airstrip.arrival.y, label: 'Escape to the airstrip' };
+    }
     return null;
   }
 
@@ -163,6 +213,13 @@ export class MissionManager {
     if (this.index === 4) {
       if (this.step === 0) return 'Pick up Vera at the garage';
       return `Get Vera to the airstrip — ${Math.max(0, Math.ceil(this.timer))}s left`;
+    }
+    if (this.index === 5) {
+      return `Collect the cash drops — ${this.dropsCollected} of 4 — ${Math.max(0, Math.ceil(this.timer))}s left`;
+    }
+    if (this.index === 6) {
+      if (this.step === 0) return 'Hit the bank vault — grab the score';
+      return `Escape to the airstrip — ${Math.max(0, Math.ceil(this.timer))}s left`;
     }
     return '';
   }
@@ -283,6 +340,39 @@ export class MissionManager {
         this.timer -= dt;
         if (this.timer <= 0) {
           this.fail('Vera missed her flight');
+        } else if (near(lm.airstrip.arrival.x, lm.airstrip.arrival.y, 90)) {
+          this.completeStep();
+        }
+      }
+    } else if (this.index === 5) {
+      // Four drops on a 150-second clock; every drop is hot (+1 wanted).
+      this.timer -= dt;
+      if (this.timer <= 0) {
+        this.fail('the street swept the drops up');
+        return;
+      }
+      const next = this.drops.find((d) => !d.taken);
+      if (next && near(next.x, next.y, 62)) {
+        next.taken = true;
+        this.dropsCollected += 1;
+        p.addWanted(1);
+        g.audio.cash();
+        g.toast(`Cash drop ${this.dropsCollected} of 4 — the cops noticed! (+1 wanted)`);
+        if (this.dropsCollected >= 4) this.completeStep();
+      }
+    } else if (this.index === 6) {
+      if (this.step === 0) {
+        if (near(lm.bank.arrival.x, lm.bank.arrival.y, 80)) {
+          this.step = 1;
+          this.timer = 150;
+          p.addWanted(5);
+          g.audio.cash();
+          g.toast('Vault score grabbed! FIVE stars — helicopter inbound! Get to the airstrip!');
+        }
+      } else {
+        this.timer -= dt;
+        if (this.timer <= 0) {
+          this.fail('the cops locked the airstrip down');
         } else if (near(lm.airstrip.arrival.x, lm.airstrip.arrival.y, 90)) {
           this.completeStep();
         }

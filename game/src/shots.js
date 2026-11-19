@@ -1,7 +1,9 @@
 // Solstice City — the screenshot scenes behind ?shot=drive|chase|mission|foot|start.
 // Each one plays the real rules forward from a fresh world for a fixed number
 // of steps, steered by a scripted driver, so the frame is what a short game
-// really looks like and the same seed always gives the same frame.
+// really looks like and the same seed always gives the same frame. Driving
+// shots use the chase cam, so anything that must read in the frame (police,
+// skids, traffic) is staged AHEAD of the player, not behind them.
 import { CFG } from './config.js';
 import { makeRng } from './random.js';
 import { makeCar } from './vehicles.js';
@@ -56,7 +58,8 @@ export function stageShot(name, game) {
     const y = 6 * CFG.PITCH;
     putPlayerInCar(game, 'sport', x, y, 0);
     // A few traffic cars ahead on the same avenue, in the correct lane for
-    // their direction (the traffic AI only turns at intersections).
+    // their direction (the traffic AI only turns at intersections). The
+    // middle one is a yellow taxi, for a splash of sunset colour.
     const traffics = game.cars.filter((c) => c.driver === 'traffic').slice(0, 3);
     for (let i = 0; i < traffics.length; i += 1) {
       const t = traffics[i];
@@ -66,6 +69,11 @@ export function stageShot(name, game) {
       t.y = y + (t.dir > 0 ? 16 : -16);
       t.angle = t.dir > 0 ? 0 : Math.PI;
       t.speed = 120;
+      if (i === 1) {
+        t.type = 'taxi';
+        t.spec = CFG.CAR_TYPES.taxi;
+        t.color = '#e8b73a';
+      }
     }
     game.hud.showOnly(null);
     return {
@@ -81,14 +89,28 @@ export function stageShot(name, game) {
     const x = 5 * CFG.PITCH;
     const y = 4 * CFG.PITCH;
     const car = putPlayerInCar(game, 'sport', x, y, 0);
-    game.player.addWanted(3);
-    for (let i = 0; i < 3; i += 1) {
-      const pc = makeCar(x - 220 - i * 90, y + (i - 1) * 70, 0, 'police', '#eef1f4', { driver: 'police' });
-      pc.speed = 260;
+    // Four stars: the helicopter and a roadblock join the chase, and the
+    // police panel fills with units — the densest frame in the game.
+    game.player.addWanted(4);
+    // Two police cars ahead, overtaking on either side (visible in the
+    // chase cam), one behind for the minimap and the panel.
+    for (let i = 0; i < 2; i += 1) {
+      const pc = makeCar(x + 300 + i * 130, y + (i === 0 ? -34 : 34), 0, 'police', '#eef1f4', { driver: 'police' });
+      pc.speed = 300;
       game.cars.push(pc);
     }
-    game.skids.push({ x: x - 60, y: y + 10, angle: 0.2, t: 5 });
-    game.skids.push({ x: x - 120, y: y - 8, angle: -0.15, t: 5 });
+    const tail = makeCar(x - 220, y - 70, 0, 'police', '#eef1f4', { driver: 'police' });
+    tail.speed = 260;
+    game.cars.push(tail);
+    // Skid marks ahead on the road, where the chase cam can see them.
+    game.skids.push({ x: x + 200, y: y + 10, angle: 0.2, t: 5 });
+    game.skids.push({ x: x + 260, y: y - 8, angle: -0.15, t: 5 });
+    // A yellow taxi ahead for colour, same lane as the player.
+    const taxi = makeCar(x + 480, y + 16, 0, 'taxi', '#e8b73a', { driver: 'traffic' });
+    taxi.axis = 'x';
+    taxi.dir = 1;
+    taxi.speed = 120;
+    game.cars.push(taxi);
     game.hud.showOnly(null);
     return {
       steps: STEPS.chase,

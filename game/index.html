@@ -23,11 +23,34 @@
   #hud-wanted { font-size: 22px; letter-spacing: 4px; margin-top: 4px; color: rgba(255,255,255,0.45); }
   #hud-objective-wrap { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); text-align: center; max-width: 560px; padding: 8px 18px; }
   #hud-mission { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #ffd23e; font-weight: 700; }
+  #hud-stage { font-size: 11px; letter-spacing: 3px; color: #ff7ab8; font-weight: 700; margin-top: 2px; }
   #hud-objective { font-size: 15px; margin-top: 2px; color: #f2f4f6; }
   #hud-topright { position: absolute; top: 12px; right: 12px; padding: 8px; text-align: center; }
   #minimap { width: 200px; height: 200px; display: block; border-radius: 6px; }
-  #hud-speed { font-size: 18px; font-weight: 700; margin-top: 4px; }
+  #hud-speedrow { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-top: 4px; }
+  #hud-speed { font-size: 32px; font-weight: 800; line-height: 1; color: #fff; }
+  #hud-gear { font-size: 15px; font-weight: 800; color: #ffd23e; }
   #hud-clock { font-size: 13px; color: #cfd6de; }
+  #hud-radio { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.12); font-size: 11px; color: #ffb3d9; letter-spacing: 0.3px; }
+  #hud-radio .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; margin-right: 6px; }
+  #hud-radio .eq i { width: 3px; background: #ff2e88; display: block; }
+  #hud-radio .eq i:nth-child(1) { height: 5px; } #hud-radio .eq i:nth-child(2) { height: 11px; }
+  #hud-radio .eq i:nth-child(3) { height: 8px; } #hud-radio .eq i:nth-child(4) { height: 12px; }
+  #hud-radio .eq i:nth-child(5) { height: 6px; }
+  /* Police response panel, left side under the cash box. */
+  #hud-police { position: absolute; top: 196px; left: 12px; padding: 8px 10px; min-width: 230px; }
+  .pol-title { font-size: 11px; letter-spacing: 2px; color: #ff7ab8; font-weight: 800; margin-bottom: 5px; }
+  .pol-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; line-height: 1.7; color: #eef1f5; }
+  .pol-name { font-weight: 700; }
+  .pol-dist { color: #cfd6de; }
+  .pol-status { font-weight: 800; letter-spacing: 0.5px; }
+  .pol-status.ram { color: #ff5a4a; } .pol-status.pur { color: #ffd23e; } .pol-status.rb { color: #4fc3f7; }
+  /* Vera's dialogue bar, bottom centre. */
+  #hud-crew { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); width: min(560px, 90vw); padding: 10px 16px; display: flex; gap: 10px; align-items: baseline; }
+  #hud-crew-name { font-size: 11px; letter-spacing: 2px; color: #ff7ab8; font-weight: 800; white-space: nowrap; }
+  #hud-crew-line { font-size: 13px; color: #f2f4f6; font-style: italic; }
+  /* Dusk vignette over the canvas, under the HUD. */
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse at center, transparent 55%, rgba(26, 8, 32, 0.42) 100%); }
   #hud-hint { position: absolute; bottom: 12px; left: 12px; padding: 8px 12px; font-size: 12px; color: #cfd6de; line-height: 1.6; }
   #hud-hint b { color: #fff; }
   #toast { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); padding: 10px 20px; font-size: 15px; font-weight: 600; background: rgba(12, 14, 20, 0.85); border: 1px solid #ffd23e; border-radius: 8px; color: #ffd23e; }
@@ -69,16 +92,25 @@
   </div>
   <div id="hud-objective-wrap" class="panel">
     <div id="hud-mission">Free roam</div>
+    <div id="hud-stage">FREE ROAM</div>
     <div id="hud-objective">Welcome to Solstice City.</div>
+  </div>
+  <div id="hud-police" class="panel hidden">
+    <div class="pol-title">SCPD RESPONSE</div>
+    <div id="hud-police-list"></div>
   </div>
   <div id="hud-topright" class="panel">
     <canvas id="minimap" width="200" height="200"></canvas>
-    <div id="hud-speed">On foot</div>
+    <div id="hud-speedrow"><span id="hud-speed">On foot</span><span id="hud-gear"></span></div>
     <div id="hud-clock">08:00</div>
+    <div id="hud-radio"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span><span id="hud-radio-track">SOLSTICE FM 88.1</span></div>
   </div>
   <div id="hud-hint" class="panel">
     <b>WASD</b> move / drive &nbsp; <b>E</b> enter car &nbsp; <b>Shift</b> sprint / handbrake<br>
-    <b>Mouse</b> aim &nbsp; <b>Click</b> shoot &nbsp; <b>P</b> pause &nbsp; <b>M</b> sound
+    <b>Mouse</b> aim &nbsp; <b>Click</b> shoot &nbsp; <b>P</b> pause &nbsp; <b>M</b> sound &nbsp; <b>L</b> headlights
+  </div>
+  <div id="hud-crew" class="panel hidden">
+    <span id="hud-crew-name">VERA SOLANO</span><span id="hud-crew-line"></span>
   </div>
   <div id="toast" class="hidden"></div>
   <div id="brief" class="panel hidden">
@@ -89,11 +121,13 @@
   </div>
 </div>
 
+<div id="vignette"></div>
+
 <div id="menu-start" class="menu">
   <div class="menu-card">
     <h1>SOLSTICE CITY</h1>
     <div class="subtitle">An open-world crime story</div>
-    <p>Rico Marín owes money to Vera Solano, the fixer who runs this sun-soaked city from her garage. Drive, steal, run jobs, and stay one step ahead of the Solstice City police — five missions stand between Rico and a clean slate.</p>
+    <p>Rico Marín owes money to Vera Solano, the fixer who runs this sun-soaked city from her garage. Drive, steal, run jobs, and stay one step ahead of the Solstice City police — seven missions stand between Rico and a clean slate.</p>
     <div class="controls">
       <b>WASD / Arrows</b> — walk and drive &nbsp;·&nbsp; <b>E</b> — steal / enter a car<br>
       <b>Mouse + Click</b> — aim and shoot &nbsp;·&nbsp; <b>Shift</b> — sprint / handbrake<br>
@@ -128,7 +162,7 @@
 <div id="menu-story" class="menu hidden">
   <div class="menu-card">
     <h2 style="color:#ffd23e">DEBT PAID</h2>
-    <p>Rico drops Vera at the airstrip as the sun comes up over the bay. The debt is gone, the heat is fading, and the whole of Solstice City is in front of him. Vera nods once. The city is his now.</p>
+    <p>Rico drops Vera at the airstrip as the sun goes down over the bay. Seven jobs done, the vault empty, the debt gone, and the whole of Solstice City in front of him. Vera nods once. The city is his now.</p>
     <p style="text-align:center">Story complete. Free roam continues — steal cars, dodge the police, and enjoy the sun.</p>
     <button id="btn-story-continue">Keep playing</button>
   </div>

@@ -8,12 +8,16 @@ export class Input {
     this.keys = new Set();
     this.pressedSet = new Set();
     this.mouse = { x: 0, y: 0, down: false, clicked: false };
+    this.lightsOn = true; // headlights: L toggles them, on by default at dusk
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
         e.preventDefault();
       }
       this.keys.add(e.code);
-      if (!e.repeat) this.pressedSet.add(e.code);
+      if (!e.repeat) {
+        this.pressedSet.add(e.code);
+        if (e.code === 'KeyL') this.lightsOn = !this.lightsOn;
+      }
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     canvas.addEventListener('mousemove', (e) => {

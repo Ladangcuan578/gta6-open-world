@@ -13,6 +13,7 @@ export function makePed(x, y, angle, rng) {
     shirt: SHIRTS[Math.floor(rng.next() * SHIRTS.length)],
     skin: rng.pick(['#e8b98a', '#c98d5f', '#8a5a3b', '#f0c8a0']),
     walkPhase: rng.next() * Math.PI * 2,
+    cap: rng.chance(0.3), // a third of the crowd wears a cap at dusk
     target: null,
     fleeTimer: 0,
     down: false,

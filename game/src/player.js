@@ -127,11 +127,15 @@ export class Player {
         brake: back && car.speed > 10,
         steer: (left ? -1 : 0) + (right ? 1 : 0),
       };
+      // L toggles the headlights; the car remembers the choice so the
+      // renderer can light the road ahead of the player's car.
+      car.headlights = input.lightsOn;
       const before = car.speed;
       const hit = stepCar(car, dt, drive, game.city);
       if (handbrake && Math.abs(car.speed) > 120) {
         car.speed -= car.speed * 1.6 * dt;
         this.skid = true;
+        game.audio.skid();
         game.skids.push({ x: car.x, y: car.y, angle: car.angle, t: 5 });
       } else {
         this.skid = false;

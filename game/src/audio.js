@@ -140,6 +140,15 @@ export class AudioSys {
     this._blip(90, 0.25, 'sine', 0.3);
   }
 
+  // Tyre squeal for handbrake skids: high-pitched filtered noise, throttled
+  // internally so holding Shift does not stack a squeal every frame.
+  skid() {
+    const now = this.ctx ? this.ctx.currentTime : 0;
+    if (now - (this._lastSkid || 0) < 0.35) return;
+    this._lastSkid = now;
+    this._noise(0.22, 0.12, 3200);
+  }
+
   pickup() {
     this._blip(880, 0.09, 'sine', 0.22);
     this._blip(1318, 0.14, 'sine', 0.22, 0.08);

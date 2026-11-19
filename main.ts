@@ -6,11 +6,12 @@
 // it in. It copies game/ and screenshots/ from beside this file to /output and
 // writes /output/dossier.json, the summary the judge reads, with the vendored
 // make.fun library. The game is an original open-world crime story: a
-// sun-soaked coastal city in 3D to explore on foot and by car, traffic and
-// pedestrians, cars to steal, a wanted level with police chases and roadblocks,
-// five story missions, taxi fares, cash stashes, combat, a HUD with a minimap,
-// a start screen and a localStorage save — all written for this entry in
-// game/src/.
+// neon-sunset coastal city in 3D to explore on foot and by car, with a low
+// chase cam while driving, traffic and pedestrians, cars to steal, a wanted
+// level with police chases, roadblocks and a helicopter, seven story missions,
+// taxi fares, cash stashes, combat, a rich HUD with a minimap, a police
+// response panel, a radio strip and a dialogue bar, a start screen and a
+// localStorage save — all written for this entry in game/src/.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
