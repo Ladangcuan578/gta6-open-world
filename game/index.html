@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solstice City — an open-world crime game</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #160a24; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #f2e8ff; }
+  #game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  .hidden { display: none !important; }
+  /* Dusk vignette over the whole scene. */
+  #hud-vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(43, 17, 85, 0.42) 100%);
+  }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .panel {
+    background: rgba(16, 8, 32, 0.72); border: 1px solid rgba(255, 90, 210, 0.35);
+    border-radius: 10px; padding: 8px 12px; backdrop-filter: blur(2px);
+  }
+  #hud-top {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  }
+  #hud-cash { font-family: 'Arial Black', Arial, sans-serif; font-size: 26px; color: #7dff5a; line-height: 1; }
+  #hud-title { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #ffb13c; margin-top: 4px; }
+  #hud-clock { font-size: 13px; color: #c9b8e8; margin-top: 4px; }
+  #hud-objective-wrap { text-align: center; max-width: 46vw; }
+  #hud-stage { font-size: 11px; letter-spacing: 2px; color: #37e6ff; text-transform: uppercase; }
+  #hud-objective { font-size: 15px; font-weight: bold; margin-top: 3px; text-shadow: 0 1px 3px #000; }
+  #hud-right { text-align: right; }
+  #hud-wanted { font-size: 22px; letter-spacing: 3px; color: #ffd23c; }
+  #hud-wanted.hot { color: #ff4d4d; }
+  #hud-health { width: 150px; height: 9px; background: rgba(255,255,255,0.18); border-radius: 5px; margin-top: 6px; overflow: hidden; }
+  #hud-health-fill { height: 100%; width: 100%; background: #37d67a; border-radius: 5px; }
+  #hud-scpd {
+    position: absolute; top: 108px; right: 10px; width: 228px; font-size: 12px;
+  }
+  #hud-scpd h3 { font-size: 11px; letter-spacing: 2px; color: #37e6ff; margin-bottom: 5px; }
+  #hud-scpd-list div { padding: 2px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+  #hud-speed-wrap { position: absolute; left: 12px; bottom: 12px; text-align: left; }
+  #hud-speed { font-family: 'Arial Black', Arial, sans-serif; font-size: 34px; color: #fff; text-shadow: 0 2px 6px #000; line-height: 1; }
+  #hud-gear { font-size: 15px; color: #ffb13c; font-weight: bold; margin-top: 2px; }
+  #hud-hint { font-size: 11px; color: #b8a8d8; margin-top: 6px; }
+  #minimap {
+    position: absolute; right: 10px; bottom: 10px; width: 200px; height: 200px;
+    border: 2px solid rgba(255, 90, 210, 0.5); border-radius: 10px; background: #14101c;
+  }
+  #hud-radio {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    font-size: 12px; letter-spacing: 1px; color: #ff8ad8; white-space: nowrap;
+  }
+  #hud-dialogue {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    width: min(620px, 72vw); font-size: 14px;
+  }
+  #hud-dialogue-who { font-size: 11px; letter-spacing: 2px; color: #ffb13c; text-transform: uppercase; }
+  #hud-dialogue-text { margin-top: 3px; line-height: 1.35; }
+  #hud-toast {
+    position: absolute; top: 84px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; font-weight: bold; color: #ffd23c; white-space: nowrap;
+    text-shadow: 0 1px 4px #000;
+  }
+  /* Menus. */
+  .menu {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; text-align: center;
+    background: linear-gradient(180deg, rgba(22, 8, 44, 0.82), rgba(60, 16, 64, 0.72));
+    pointer-events: auto; padding: 20px;
+  }
+  .menu h1 {
+    font-family: 'Arial Black', Arial, sans-serif; font-size: 64px; letter-spacing: 4px;
+    background: linear-gradient(90deg, #ffd23c, #ff5ad2, #ff7a3c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: none; line-height: 1;
+  }
+  .menu h2 { font-family: 'Arial Black', Arial, sans-serif; font-size: 44px; letter-spacing: 4px; color: #ffd23c; }
+  .menu p { font-size: 15px; color: #d8c8f2; max-width: 560px; line-height: 1.5; }
+  .menu .keys { font-size: 12px; color: #b8a8d8; line-height: 1.8; }
+  .menu button {
+    pointer-events: auto; cursor: pointer; font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 17px; letter-spacing: 1px; color: #1a0a2e; background: linear-gradient(90deg, #ffb13c, #ff5ad2);
+    border: none; border-radius: 10px; padding: 12px 30px; margin-top: 4px;
+  }
+  .menu button:hover { filter: brightness(1.12); }
+  .menu button.ghost { background: transparent; color: #ffb13c; border: 2px solid #ffb13c; }
+  .menu .fine { font-size: 11px; color: #8a7ab0; margin-top: 10px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="hud-vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div class="panel">
+      <div id="hud-cash">$0</div>
+      <div id="hud-title">Wheelman</div>
+      <div id="hud-clock">17:20</div>
+    </div>
+    <div id="hud-objective-wrap" class="panel">
+      <div id="hud-stage">STAGE 1/7</div>
+      <div id="hud-objective">Steal a car — any ride will do</div>
+    </div>
+    <div class="panel" id="hud-right">
+      <div id="hud-wanted">☆☆☆☆☆</div>
+      <div id="hud-health"><div id="hud-health-fill"></div></div>
+    </div>
+  </div>
+  <div id="hud-scpd" class="panel">
+    <h3>SCPD RESPONSE</h3>
+    <div id="hud-scpd-list"><div>SCPD — all quiet</div></div>
+  </div>
+  <div id="hud-speed-wrap">
+    <div id="hud-speed">0 km/h</div>
+    <div id="hud-gear">N</div>
+    <div id="hud-hint">WASD drive / walk · E enter car · T taxi · Click shoot<br>P pause · M mute · L headlights · R radio</div>
+  </div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div id="hud-radio" class="panel">SOLSTICE FM 88.1 — Neon Coast Drive</div>
+  <div id="hud-dialogue" class="panel hidden">
+    <div id="hud-dialogue-who">Vera Solano</div>
+    <div id="hud-dialogue-text"></div>
+  </div>
+  <div id="hud-toast" class="hidden"></div>
+</div>
+
+<div id="menu-start" class="menu">
+  <h1>SOLSTICE CITY</h1>
+  <p>An open-world crime story at neon dusk. Steal cars, outrun the SCPD, and run seven jobs for Vera Solano — from your first wheels to the last score.</p>
+  <button id="btn-new">New Game</button>
+  <button id="btn-continue" class="ghost hidden">Continue</button>
+  <div class="keys">WASD / arrows — drive &amp; walk &nbsp;·&nbsp; E — enter / exit car &nbsp;·&nbsp; T — hail a taxi<br>Mouse — aim &amp; shoot &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; M — mute &nbsp;·&nbsp; L — headlights &nbsp;·&nbsp; R — radio</div>
+  <div class="fine">A fan-made original. Not affiliated with Rockstar Games. All names, places and music are invented.</div>
+</div>
+
+<div id="menu-pause" class="menu hidden">
+  <h2>PAUSED</h2>
+  <p>The city waits for no one — except right now.</p>
+  <button id="btn-resume">Resume</button>
+  <button id="btn-restart" class="ghost">Restart</button>
+  <button id="btn-quit" class="ghost">Quit to Title</button>
+</div>
+
+<div id="menu-busted" class="menu hidden">
+  <h2>BUSTED</h2>
+  <p>The SCPD caught you on foot. A $200 fine and a lecture later, you are back on the street.</p>
+  <button id="btn-busted-restart">Back on the street</button>
+</div>
+
+<div id="menu-wasted" class="menu hidden">
+  <h2>WASTED</h2>
+  <p>Rico went down. The city keeps moving — and so do you, after a $200 hospital bill.</p>
+  <button id="btn-wasted-restart">Get up</button>
+</div>
+
+<div id="menu-complete" class="menu hidden">
+  <h2>STORY COMPLETE</h2>
+  <p>Seven jobs done. The last score is in the bag and Solstice City is yours, Rico — king of the coast.</p>
+  <button id="btn-complete-restart">Play again</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
