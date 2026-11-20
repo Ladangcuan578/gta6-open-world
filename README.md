@@ -6,42 +6,43 @@
 
 [Make GTA 6 on make.fun](https://make.fun/bounty/gta6-01)
 
-Solstice City is an original 3D open-world crime game set in a neon-sunset
-coastal city. You are Rico Marín, a wheelman working seven jobs for the fixer
-Vera Solano — from stealing your first car to the last score at the bank —
-while the Solstice City Police Department answers every crime with cruisers,
-roadblocks and a helicopter. Everything in it is invented: the city, the
-people, the music, the story. It is not affiliated with Rockstar Games.
+Solstice City is an original 3D open-world crime game in a neon-sunset
+coastal city. You play Rico Marín, a wheelman doing seven jobs for the fixer
+Vera Solano — stealing a first car, running hot deliveries, hitting the bank
+twice — while the Solstice City Police Department answers with cruisers,
+roadblocks and a helicopter. The city, the people, the music and the story
+are all invented. It is not affiliated with Rockstar Games.
 
 ## What is in the game
 
-- **A city to explore** — a 12×12-block grid with distinct districts: Downtown
+- **A city to explore** — a 12×12-block grid with its own districts: Downtown
   towers, Old Town brick, Uptown flats, Portside warehouses, Beachfront
   villas, Palm Park, Solstice Plaza, an airfield with a runway, and a
-  boardwalk over the bay. Neon signs, palm trees, traffic lights on an
-  8-second cycle, street-light glow pools, a water tower, and a low sun that
-  throws long shadows across the roads.
+  boardwalk over the bay. The sun sits low in the west and throws long
+  shadows; about a third of the windows glow warm; neon signs spell HOTEL,
+  BAR, TACOS, NEON, CASINO and 24H; traffic lights run an 8-second cycle and
+  street lights pool warm light on the roads.
 - **On foot and by car** — walk the sidewalks or steal any car on the street.
-  Detailed cars with stepped hoods and trunks, bumpers, mirrors, turning
-  wheels, a taxi with a roof sign, headlights with a real spotlight and a
-  pool of light on the road (L), taillights and a sport spoiler. A low
-  third-person chase camera follows the car and widens its field of view as
-  you go faster.
-- **Traffic and pedestrians** — cars follow the lanes and stop at red lights;
-  pedestrians walk the sidewalks and run when a gun goes off or a car comes
-  at them. Steal a car and its driver bails out and flees.
+  Cars are built in detail: stepped hoods and trunks, bumpers, mirrors,
+  front wheels that turn, a taxi with a roof sign, headlights with a real
+  spotlight and a pool of light on the road (L), taillights and a sport
+  spoiler. A low third-person chase camera follows the car and widens its
+  field of view as you go faster.
+- **Traffic and pedestrians** — cars keep to their lanes and stop at red
+  lights; pedestrians stroll the sidewalks and run when a gun goes off or a
+  car bears down on them. Steal a car and its driver bails out and flees.
 - **A wanted level, 0–5** — steal a car (+1 star, a police cruiser +2) and
   the SCPD sends cruisers that chase and ram. At four stars the avenues get
-  roadblocks and HELI-1 takes station overhead with a searchlight. Get
-  caught on foot and you are busted; lose all your health and you are wasted.
+  roadblocks and HELI-1 takes station overhead with a searchlight. Get caught
+  on foot and you are busted; lose all your health and you are wasted.
 - **Seven story missions** — First Wheels ($500), Hot Delivery ($800),
   The Pickup ($1,200), The Big One ($3,000), Airport Run ($2,000),
   The Long Con ($2,500) and The Last Score ($4,000), each with stages, a
   beacon marker, a timer where it counts, and dialogue from Vera.
-- **Side money** — hail a taxi with T for a $150–$300 fare, or pick up the
-  eight cash stashes hidden around the city ($100 each, they come back after
-  a minute). Earnings raise your reputation: Wheelman, Street Boss, King of
-  Solstice, Legend of Solstice.
+- **Side money** — drive a taxi with T for a $150–$300 fare, or pick up the
+  eight cash stashes hidden around the city ($100 each, back after a minute).
+  Earnings raise your reputation: Wheelman, Street Boss, King of Solstice,
+  Legend of Solstice.
 - **Combat** — aim with the mouse and shoot on foot or in a drive-by.
 - **A rich HUD** — minimap, cash and reputation, the wanted stars, health,
   a big speedometer with a gear readout, the objective and the mission stage,
@@ -59,7 +60,7 @@ people, the music, the story. It is not affiliated with Rockstar Games.
 | W A S D / arrows | Drive, or walk on foot |
 | Space | Handbrake (skid) |
 | E | Enter / exit a car |
-| T | Hail a taxi (near one, with cash) |
+| T | Taxi fare (while driving a taxi) |
 | Mouse click | Shoot toward the cursor |
 | P | Pause / resume |
 | M | Mute |

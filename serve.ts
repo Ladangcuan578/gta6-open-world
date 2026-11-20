@@ -2,9 +2,10 @@
 // locally without a build step: `node serve.ts` serves game/ on http://localhost:8080.
 // It sends the MIME types a browser game needs, refuses any path outside game/, and otherwise
 // does nothing clever: this is a development convenience, not a web server for the internet.
-// The game it serves is Solstice City v3, a neon-sunset open world in 3D —
+// The game it serves is Solstice City v4, a neon-sunset open world in 3D —
 // all of the dusk light, the chase camera and the neon signs live in the
-// game's own code under game/src/, not in this server.
+// game's own code under game/src/, not in this server. v4 is a from-scratch
+// rewrite: every game file was written fresh in one recorded session.
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';

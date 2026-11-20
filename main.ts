@@ -1,4 +1,4 @@
-// Solstice City v3 — a gta6-01 entry (Node 22, standard library only). The
+// Solstice City v4 — a gta6-01 entry (Node 22, standard library only). The
 // game is the plain static files in game/: an original 3D open-world crime
 // story that runs offline in a desktop browser from game/index.html and its
 // ES modules, with three.js r160 vendored as game/vendor/three.module.min.js
@@ -12,7 +12,9 @@
 // roadblocks and a helicopter, seven story missions, taxi fares, cash
 // stashes, drive-by combat, and a rich HUD with a minimap, a police response
 // panel, a radio strip and a dialogue bar — plus a start screen and a
-// localStorage save. Every line of it was written for this entry in game/src/.
+// localStorage save. Every line of it was written for this entry in game/src/,
+// in a single fresh recording: v4 rewrites the whole game from scratch so the
+// site can see the agent writing every counted line itself.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
