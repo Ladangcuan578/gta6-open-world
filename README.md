@@ -6,97 +6,52 @@
 
 [Make GTA 6 on make.fun](https://make.fun/bounty/gta6-01)
 
-Solstice City is an original 3D open-world crime game in a neon-sunset
-coastal city. You play Rico Marín, a wheelman doing seven jobs for the fixer
-Vera Solano — stealing a first car, running hot deliveries, hitting the bank
-twice — while the Solstice City Police Department answers with cruisers,
-roadblocks and a helicopter. The city, the people, the music and the story
-are all invented. It is not affiliated with Rockstar Games.
+Solstice City is an original 3D open-world crime game in a neon-sunset coastal city. You play Dante Vega, a driver-for-hire who owes $50,000 to Eddie Voss of the Solstice Kings. The fixer Mara Quinn has ten story jobs for you — stealing a first car, running hot deliveries, tailing a courier, hitting the bank twice, raiding a warehouse, rescuing an informant, and one last score at the airfield — while the Solstice City Police Department answers with cruisers, roadblocks and a helicopter with a searchlight. The city, the people, the music and the story are all invented. It is not affiliated with Rockstar Games.
 
 ## What is in the game
 
-- **A city to explore** — a 12×12-block grid with its own districts: Downtown
-  towers, Old Town brick, Uptown flats, Portside warehouses, Beachfront
-  villas, Palm Park, Solstice Plaza, an airfield with a runway, and a
-  boardwalk over the bay. The sun sits low in the west and throws long
-  shadows; about a third of the windows glow warm; neon signs spell HOTEL,
-  BAR, TACOS, NEON, CASINO and 24H; traffic lights run an 8-second cycle and
-  street lights pool warm light on the roads.
-- **On foot and by car** — walk the sidewalks or steal any car on the street.
-  Cars are built in detail: stepped hoods and trunks, bumpers, mirrors,
-  front wheels that turn, a taxi with a roof sign, headlights with a real
-  spotlight and a pool of light on the road (L), taillights and a sport
-  spoiler. A low third-person chase camera follows the car and widens its
-  field of view as you go faster.
-- **Traffic and pedestrians** — cars keep to their lanes and stop at red
-  lights; pedestrians stroll the sidewalks and run when a gun goes off or a
-  car bears down on them. Steal a car and its driver bails out and flees.
-- **A wanted level, 0–5** — steal a car (+1 star, a police cruiser +2) and
-  the SCPD sends cruisers that chase and ram. At four stars the avenues get
-  roadblocks and HELI-1 takes station overhead with a searchlight. Get caught
-  on foot and you are busted; lose all your health and you are wasted.
-- **Seven story missions** — First Wheels ($500), Hot Delivery ($800),
-  The Pickup ($1,200), The Big One ($3,000), Airport Run ($2,000),
-  The Long Con ($2,500) and The Last Score ($4,000), each with stages, a
-  beacon marker, a timer where it counts, and dialogue from Vera.
-- **Side money** — drive a taxi with T for a $150–$300 fare, or pick up the
-  eight cash stashes hidden around the city ($100 each, back after a minute).
-  Earnings raise your reputation: Wheelman, Street Boss, King of Solstice,
-  Legend of Solstice.
-- **Combat** — aim with the mouse and shoot on foot or in a drive-by.
-- **A rich HUD** — minimap, cash and reputation, the wanted stars, health,
-  a big speedometer with a gear readout, the objective and the mission stage,
-  an SCPD Response panel with each unit's callsign, distance and status, a
-  Solstice FM 88.1 radio strip, and Vera's dialogue bar.
-- **Sound, all synthesized** — engine hum that follows your speed, tyre
-  skid, gunshots, pickups and a little radio sequencer. M mutes.
-- **Save** — the run autosaves every twenty seconds and on every big event,
-  and the title screen offers Continue.
+- **A city to explore** — a 10×10-block grid with its own districts: Downtown towers, Old Town brick, Uptown flats, Portside warehouses, Beachfront villas, Palm Park, Solstice Plaza, an airfield with a runway, and a boardwalk over the bay. The sun sits low in the west and throws long shadows; windows glow warm; neon signs spell HOTEL, BAR, TACOS, NEON, CASINO and 24H; traffic lights run a 16-second cycle and street lights pool warm light on the roads.
+- **On foot and by car** — walk the sidewalks or steal any car on the street. Cars are built in detail: stepped hoods and trunks, bumpers, mirrors, front wheels that turn, a taxi with a roof sign, headlights with a real spotlight and a pool of light on the road (L), taillights and a sport spoiler. A low third-person chase camera follows the car and widens its field of view as you go faster.
+- **Traffic and pedestrians** — 26 cars drive the grid, stop at red lights and slow for the car ahead; 8 more sit parked at the kerb, ready to steal. 42 pedestrians walk the sidewalks and flee when shots ring out.
+- **A wanted system and police** — five stars. Cruisers pursue and ram, roadblocks appear from three stars, and from four stars a helicopter joins with a searchlight and a lock meter. Break its line of sight beside tall buildings and the lock decays; shoot it down and it retreats. Get caught on foot and you are busted; get shot and you are wasted. Either way you lose some cash and wake up at the Plaza.
+- **Ten story missions** — a full arc with briefings, objectives, timers, tailing, shootouts and getaways, each paying out in cash. Progress, money and your best wanted level are saved in the browser.
+- **Combat and a weapon wheel** — fists, pistol, SMG and shotgun (hold Q, or press 1–4), with tracers, muzzle flash, ammo and reloads. Guards and gang members shoot back.
+- **A rich HUD** — a live minimap with traffic, police, helicopter and mission blips, wanted stars, the SCPD panel with a heli-lock meter, health, money, weapon and ammo, a speedometer and three procedural radio stations (M to change station).
+- **Sound, all synthesised** — engine hum that follows your speed, a two-tone siren, gunshots, pickups and mission jingles, plus radio loops. No audio files.
 
 ## Controls
 
-| Key | What it does |
-| --- | --- |
-| W A S D / arrows | Drive, or walk on foot |
-| Space | Handbrake (skid) |
-| E | Enter / exit a car |
-| T | Taxi fare (while driving a taxi) |
-| Mouse click | Shoot toward the cursor |
-| P | Pause / resume |
-| M | Mute |
-| L | Headlights on / off |
-| R | Next radio track |
+WASD / arrows — drive & walk · E — steal / enter / exit car · Q — weapon wheel · Mouse click or Space — shoot on foot · Shift — run / nitro · L — headlights · M — radio · C — reset camera · N — next job · P / Esc — pause
 
-## Run it
+## How to run
 
 ```sh
-node serve.ts        # then open http://localhost:8080
+node serve.ts
+# open http://localhost:8080
 ```
 
-`game/` is plain static files — no build step, no network request at run
-time. The game needs a desktop browser with WebGL.
-
-## Hand it in
-
-```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-```
-
-`main.ts` (Node 22) copies `game/` and `screenshots/` to the output
-directory and writes `dossier.json` with the vendored `vendor/makefun-game.ts`.
+No build step, no network request: the game is static files under `game/`, with three.js vendored at `game/vendor/three.module.min.js`.
 
 ## Screenshots
 
-Four renders of the game in a headless browser, each 1280×800:
+The four screenshots under `screenshots/` are real renders of the game, staged deterministically with `?shot=chase|drive|mission|foot&seed=7` (see `game/src/shots.js` and `tools/capture.mjs`). The cover, `1-chase.jpg`, shows a four-star chase with the helicopter, the wanted level, the minimap and a mission objective at once.
 
-1. `1-drive.jpg` — the cover: a sport car running west into the sunset.
-2. `2-chase.jpg` — four stars: cruisers, a roadblock and HELI-1.
-3. `3-mission.jpg` — on foot at the plaza, the mission beacon over the fountain.
-4. `4-foot.jpg` — on foot on the boardwalk, palms and the bay.
+## Structure
+
+- `game/index.html` — canvas and HUD
+- `game/src/main.js` — boot, loop, chase camera, screens
+- `game/src/city.js` — the procedural neon-sunset city
+- `game/src/vehicles.js` — car models, driving physics, traffic
+- `game/src/player.js` — Dante on foot
+- `game/src/police.js` — cruisers, roadblocks, helicopter
+- `game/src/pedestrians.js` — sidewalk life
+- `game/src/missions.js` — the ten story jobs
+- `game/src/combat.js` — weapons, shooting, enemies
+- `game/src/hud.js` — minimap, wanted stars, SCPD panel, weapon wheel
+- `game/src/audio.js` — synthesised sound and radio
+- `game/src/shots.js` — deterministic screenshot scenes
+- `game/src/config.js`, `game/src/rng.js`, `game/src/input.js`, `game/src/save.js` — constants, seeded random, input, saves
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Unofficial fan-made game, not affiliated with
-Rockstar Games or Take-Two Interactive. No Rockstar artwork, logos, characters
-or fonts are used. three.js r160 is vendored under `game/vendor/` under its
-own license.
+MIT — see `LICENSE`.

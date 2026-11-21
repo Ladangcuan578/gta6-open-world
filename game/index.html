@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solstice City — an open-world crime game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1033; font-family: Arial, Helvetica, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hidden { display: none !important; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
+  .panel { background: rgba(16, 10, 28, 0.72); border: 1px solid rgba(255, 210, 122, 0.35); border-radius: 8px; padding: 8px 10px; }
+  #minimap-wrap { position: absolute; top: 14px; left: 14px; }
+  #minimap { display: block; width: 190px; height: 190px; border-radius: 6px; border: 2px solid rgba(255, 210, 122, 0.6); }
+  #district { margin-top: 4px; font-weight: bold; font-size: 14px; letter-spacing: 1px; color: #ffd27a; text-shadow: 0 1px 2px #000; }
+  #scpd { position: absolute; top: 14px; right: 14px; min-width: 210px; text-align: right; }
+  #stars { font-size: 26px; letter-spacing: 4px; color: #555; text-shadow: 0 0 6px rgba(0,0,0,0.8); }
+  #stars .on { color: #ffd21f; text-shadow: 0 0 10px #ff8a00; }
+  #wanted-label { font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #ff8a7a; }
+  #heat-bar, #heli-bar { height: 8px; background: #332233; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+  #heat-fill { height: 100%; width: 0%; background: #ff3333; }
+  #heli-fill { height: 100%; width: 0%; background: #ff8a00; }
+  #heli-row { font-size: 12px; margin-top: 6px; color: #ffb84d; letter-spacing: 1px; }
+  #vitals { position: absolute; left: 14px; bottom: 14px; min-width: 260px; }
+  #health-bar { height: 14px; background: #332233; border-radius: 7px; overflow: hidden; margin-top: 4px; }
+  #health-fill { height: 100%; width: 100%; background: #2ec27a; }
+  #health-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+  #money { font-size: 22px; font-weight: bold; color: #7dff2e; text-shadow: 0 1px 2px #000; margin-top: 4px; }
+  #weapon-line { font-size: 15px; font-weight: bold; color: #fff; margin-top: 4px; }
+  #weapon-ammo { color: #ffd27a; }
+  #drive { position: absolute; right: 14px; bottom: 14px; text-align: right; }
+  #speed { font-size: 44px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px #000; line-height: 1; }
+  #speed-unit { font-size: 14px; color: #ffd27a; }
+  #radio { font-size: 14px; font-weight: bold; color: #00e5ff; letter-spacing: 1px; margin-top: 4px; }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px; text-align: center; font-size: 17px; font-weight: bold; color: #fff; background: rgba(16,10,28,0.72); border: 1px solid rgba(255,210,122,0.5); border-radius: 8px; padding: 8px 14px; }
+  #hint { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: bold; color: #ffd27a; text-shadow: 0 1px 2px #000; background: rgba(16,10,28,0.6); padding: 5px 12px; border-radius: 6px; }
+  #toasts { position: absolute; left: 14px; top: 262px; width: 340px; }
+  .toast { background: rgba(16,10,28,0.8); border-left: 4px solid #ffd21f; padding: 8px 10px; margin-bottom: 6px; font-size: 14px; border-radius: 4px; }
+  #banner { position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%) scale(0.9); text-align: center; opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
+  #banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .banner-title { font-size: 44px; font-weight: bold; letter-spacing: 3px; color: #ffd21f; text-shadow: 0 0 18px rgba(255,138,0,0.8), 0 2px 4px #000; }
+  .banner-title.fail { color: #ff5555; text-shadow: 0 0 18px rgba(255,0,0,0.8), 0 2px 4px #000; }
+  .banner-sub { font-size: 18px; color: #fff; text-shadow: 0 1px 3px #000; margin-top: 6px; }
+  #crosshair { position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+  #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 4px #000; }
+  #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair::after { top: 10px; left: 0; width: 22px; height: 2px; }
+  #wheel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; pointer-events: auto; }
+  .wheel-slot { width: 150px; padding: 12px; background: rgba(16,10,28,0.85); border: 2px solid rgba(255,210,122,0.4); border-radius: 8px; color: #fff; cursor: pointer; text-align: left; }
+  .wheel-slot.selected { border-color: #ffd21f; background: rgba(80,50,10,0.9); }
+  .wheel-slot b { display: block; font-size: 16px; letter-spacing: 1px; }
+  .wheel-slot span { font-size: 12px; color: #ffd27a; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(42,22,80,0.92), rgba(255,122,60,0.55) 70%, rgba(26,16,51,0.95)); color: #fff; text-align: center; z-index: 10; }
+  .screen h1 { font-size: 64px; margin: 0; letter-spacing: 6px; color: #ffd21f; text-shadow: 0 0 24px rgba(255,138,0,0.9), 0 3px 6px #000; }
+  .screen h2 { font-size: 20px; margin: 8px 0 4px; letter-spacing: 3px; color: #ff8ac2; }
+  .screen p { max-width: 620px; font-size: 16px; line-height: 1.5; margin: 10px 20px; }
+  .screen .keys { font-size: 14px; color: #ffd27a; line-height: 1.8; }
+  .screen button { pointer-events: auto; margin: 8px; padding: 12px 28px; font-size: 17px; font-weight: bold; letter-spacing: 1px; color: #1a1033; background: #ffd21f; border: none; border-radius: 8px; cursor: pointer; }
+  .screen button:hover { background: #ffe27a; }
+  .screen button.secondary { background: transparent; color: #ffd21f; border: 2px solid #ffd21f; }
+  #title-stats, #over-stats { font-size: 15px; color: #fff; margin: 6px 0 12px; }
+  .quality-row { font-size: 14px; color: #ffd27a; margin-top: 10px; }
+  .quality-row select { margin-left: 6px; padding: 4px; font-size: 14px; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Solstice City: an open-world crime game. Drive, walk, steal cars, do missions and lose the police."></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud" class="hidden">
+  <div id="minimap-wrap" class="panel">
+    <canvas id="minimap" width="190" height="190"></canvas>
+    <div id="district">Solstice City</div>
+  </div>
+  <div id="scpd" class="panel">
+    <div id="stars"></div>
+    <div id="wanted-label">CLEAN</div>
+    <div id="heat-bar"><div id="heat-fill"></div></div>
+    <div id="heli-row" class="hidden">HELI LOCK <div id="heli-bar"><div id="heli-fill"></div></div></div>
+  </div>
+  <div id="objective" class="hidden"></div>
+  <div id="hint" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="banner"></div>
+  <div id="crosshair" class="hidden"></div>
+  <div id="wheel" class="hidden"></div>
+  <div id="vitals" class="panel">
+    <div id="health-line"><span>HEALTH</span><span id="health-num">100</span></div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="money">$250</div>
+    <div id="weapon-line"><span id="weapon-name">PISTOL</span> · <span id="weapon-ammo">12 / 96</span></div>
+  </div>
+  <div id="drive">
+    <div id="speed"></div>
+    <div id="speed-unit"></div>
+    <div id="radio"></div>
+  </div>
+</div>
+
+<div id="screen-title" class="screen">
+  <h1>SOLSTICE CITY</h1>
+  <h2>AN OPEN-WORLD CRIME GAME</h2>
+  <p>You are Dante Vega, a driver-for-hire in a neon-sunset coastal city. You owe $50,000 to Eddie Voss of the Solstice Kings. The fixer Mara Quinn has ten jobs for you — steal cars, run deliveries, hit banks, and settle the debt. The Solstice City Police Department will answer with cruisers, roadblocks and a helicopter.</p>
+  <p class="keys">WASD / Arrows — drive &amp; walk &nbsp;·&nbsp; E — steal / enter car &nbsp;·&nbsp; Q — weapon wheel &nbsp;·&nbsp; Mouse — aim &amp; shoot &nbsp;·&nbsp; Space — brake / shoot on foot &nbsp;·&nbsp; Shift — run / nitro &nbsp;·&nbsp; L — headlights &nbsp;·&nbsp; M — radio &nbsp;·&nbsp; C — camera &nbsp;·&nbsp; N — next job &nbsp;·&nbsp; P — pause</p>
+  <div id="title-stats"></div>
+  <div>
+    <button id="btn-continue">CONTINUE</button>
+    <button id="btn-new">NEW GAME</button>
+  </div>
+  <div class="quality-row">Quality <select id="quality"><option value="high">High — shadows on</option><option value="low">Low — faster</option></select></div>
+</div>
+
+<div id="screen-pause" class="screen hidden">
+  <h1>PAUSED</h1>
+  <p>Solstice City waits for no one — except now.</p>
+  <div>
+    <button id="btn-resume">RESUME</button>
+    <button id="btn-save-quit" class="secondary">SAVE &amp; QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div id="screen-over" class="screen hidden">
+  <h1 id="over-title">WASTED</h1>
+  <p id="over-stats"></p>
+  <div><button id="btn-respawn">BACK ON THE STREETS</button></div>
+</div>
+
+<div id="screen-win" class="screen hidden">
+  <h1>DEBT PAID</h1>
+  <p>Ten jobs done. The debt to Eddie Voss is gone, Captain Hale is exposed, and Solstice City is yours. Free roam continues — the streets, the cars and the cops are still out there.</p>
+  <div><button id="btn-free">KEEP PLAYING</button></div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
